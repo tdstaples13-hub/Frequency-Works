@@ -93,7 +93,7 @@ public final class ConfigScreen extends Screen {
     private String selectedFrequency() {
         return (frequencyBox == null ? "" : frequencyBox.getValue()) + ":" + (privateScope?"private":"public");
     }
-    private void rebuildWidgets() {
+    protected void rebuildWidgets() {
         String previous = frequencyBox == null?"":frequencyBox.getValue();
         clearWidgets();
         init();
