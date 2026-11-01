@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "frequencyworks:block/frequency_monitor"
+    }
+  }
+}

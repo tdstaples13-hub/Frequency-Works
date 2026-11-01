@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BFB",
+    "PXP",
+    "BFB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:magma_cream"
+    },
+    "F": {
+      "item": "minecraft:ender_eye"
+    },
+    "P": {
+      "item": "minecraft:blaze_rod"
+    },
+    "X": {
+      "item": "frequencyworks:transfer_port_t2"
+    }
+  },
+  "result": {
+    "id": "frequencyworks:transfer_port_t3",
+    "count": 1
+  }
+}

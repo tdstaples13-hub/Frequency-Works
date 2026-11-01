@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "frequencyworks:block/item_sequencer"
+    }
+  }
+}

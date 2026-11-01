@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "frequencyworks:block/transfer_port_t1"
+    },
+    "facing=south": {
+      "model": "frequencyworks:block/transfer_port_t1"
+    },
+    "facing=east": {
+      "model": "frequencyworks:block/transfer_port_t1"
+    },
+    "facing=west": {
+      "model": "frequencyworks:block/transfer_port_t1"
+    },
+    "facing=up": {
+      "model": "frequencyworks:block/transfer_port_t1"
+    },
+    "facing=down": {
+      "model": "frequencyworks:block/transfer_port_t1"
+    }
+  }
+}

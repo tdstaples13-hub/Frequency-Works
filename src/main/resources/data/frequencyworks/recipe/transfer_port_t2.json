@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BFB",
+    "PXP",
+    "BFB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:slime_ball"
+    },
+    "F": {
+      "item": "minecraft:diamond"
+    },
+    "P": {
+      "item": "minecraft:gold_ingot"
+    },
+    "X": {
+      "item": "frequencyworks:transfer_port_t1"
+    }
+  },
+  "result": {
+    "id": "frequencyworks:transfer_port_t2",
+    "count": 1
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "AFA",
+    "BXB",
+    "DFD"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:copper_ingot"
+    },
+    "D": {
+      "item": "minecraft:iron_ingot"
+    },
+    "F": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "B": {
+      "item": "minecraft:string"
+    },
+    "X": [
+      {
+        "item": "minecraft:barrel"
+      },
+      {
+        "item": "minecraft:chest"
+      }
+    ]
+  },
+  "result": {
+    "id": "frequencyworks:transfer_buffer_t1",
+    "count": 1
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BFB",
+    "PXP",
+    "BFB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:dragon_breath"
+    },
+    "F": {
+      "item": "minecraft:end_crystal"
+    },
+    "P": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "X": {
+      "item": "frequencyworks:transfer_port_t4"
+    }
+  },
+  "result": {
+    "id": "frequencyworks:transfer_port_t5",
+    "count": 1
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BFB",
+    "PXP",
+    "BFB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:phantom_membrane"
+    },
+    "F": {
+      "item": "minecraft:echo_shard"
+    },
+    "P": {
+      "item": "minecraft:shulker_shell"
+    },
+    "X": {
+      "item": "frequencyworks:transfer_port_t3"
+    }
+  },
+  "result": {
+    "id": "frequencyworks:transfer_port_t4",
+    "count": 1
+  }
+}

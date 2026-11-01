@@ -1,0 +1,18 @@
+{
+  "item.frequencyworks.sequence_tablet": "Sequence Tablet",
+  "item.frequencyworks.tag_card": "Tag Card",
+  "item.frequencyworks.interaction_card": "Interaction Card",
+  "item.frequencyworks.redstone_card": "Redstone Card",
+  "block.frequencyworks.transfer_buffer_t1": "Tethered Transfer Buffer",
+  "block.frequencyworks.transfer_port_t1": "Tethered Transfer Port",
+  "block.frequencyworks.transfer_buffer_t2": "Gilded Transfer Buffer",
+  "block.frequencyworks.transfer_port_t2": "Gilded Transfer Port",
+  "block.frequencyworks.transfer_buffer_t3": "Blazing Transfer Buffer",
+  "block.frequencyworks.transfer_port_t3": "Blazing Transfer Port",
+  "block.frequencyworks.transfer_buffer_t4": "Endwoven Transfer Buffer",
+  "block.frequencyworks.transfer_port_t4": "Endwoven Transfer Port",
+  "block.frequencyworks.transfer_buffer_t5": "Dragonbound Transfer Buffer",
+  "block.frequencyworks.transfer_port_t5": "Dragonbound Transfer Port",
+  "block.frequencyworks.item_sequencer": "Item Sequencer",
+  "block.frequencyworks.frequency_monitor": "Transfer Frequency Monitor"
+}

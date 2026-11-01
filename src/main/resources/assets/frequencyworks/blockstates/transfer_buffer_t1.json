@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "frequencyworks:block/transfer_buffer_t1"
+    }
+  }
+}

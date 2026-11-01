@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BFB",
+    "PXP",
+    "BFB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:string"
+    },
+    "F": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "P": {
+      "item": "minecraft:copper_ingot"
+    },
+    "X": {
+      "item": "minecraft:redstone_torch"
+    }
+  },
+  "result": {
+    "id": "frequencyworks:transfer_port_t1",
+    "count": 4
+  }
+}
