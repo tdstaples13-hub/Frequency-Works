@@ -1,0 +1,27 @@
+# Gradle and NeoForge generated files
+.gradle/
+build/
+run/
+runs/
+out/
+bin/
+
+# IDE workspace and machine-specific settings
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Compiled classes and troubleshooting output
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Keep source, recipes, GitHub workflows, and Gradle wrapper files tracked.
