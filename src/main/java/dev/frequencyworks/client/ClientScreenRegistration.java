@@ -11,5 +11,6 @@ public final class ClientScreenRegistration {
     private ClientScreenRegistration() {}
     @SubscribeEvent public static void register(RegisterMenuScreensEvent event) {
         event.register(ModContent.BUFFER_MENU.get(), BufferScreen::new);
+        event.register(ModContent.PORT_MENU.get(), PortScreen::new);
     }
 }

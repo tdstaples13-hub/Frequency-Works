@@ -14,6 +14,16 @@ public final class ConfigClient {
                 menu.updateClient(payload.scrollRow(),payload.capacity(),payload.sorting(),payload.counts());
         });
     }
+    public static void receivePortState(ConfigNetworking.PortState payload) {
+        Minecraft client = Minecraft.getInstance();
+        client.execute(() -> {
+            if (client.player != null && client.player.containerMenu instanceof dev.frequencyworks.menu.PortMenu menu
+                    && menu.containerId == payload.containerId()) {
+                menu.setState(payload.state());
+                if (client.screen instanceof PortScreen screen) screen.refreshState();
+            }
+        });
+    }
     public static void open(ConfigNetworking.OpenConfig packet) {
         Minecraft client = Minecraft.getInstance();
         if (client.screen instanceof ConfigScreen existing && existing.sameTarget(packet)) {

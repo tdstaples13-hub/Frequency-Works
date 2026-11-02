@@ -19,6 +19,9 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class PortFilterBank implements Predicate<ItemStack> {
     private boolean whitelist = true;
+    // Keep legacy filters saved for rollback, but never evaluate entries above
+    // the tier's new three-row visible limit.
+    private int activeCapacity = 20;
     private final List<String> rules = new ArrayList<>();
     private final List<Predicate<ItemStack>> compiled = new ArrayList<>();
 
@@ -57,6 +60,7 @@ public final class PortFilterBank implements Predicate<ItemStack> {
         if (!normalized.isEmpty()) {
             try { compile(normalized); } catch (IllegalArgumentException ex) { return false; }
         }
+        activeCapacity = capacity;
         while (rules.size() <= slot) rules.add("");
         rules.set(slot, normalized);
         rebuild();
@@ -65,7 +69,10 @@ public final class PortFilterBank implements Predicate<ItemStack> {
 
     private void rebuild() {
         compiled.clear();
-        for (String rule : rules) if (!rule.isBlank()) compiled.add(compile(rule));
+        for (int i = 0; i < Math.min(activeCapacity, rules.size()); i++) {
+            String rule = rules.get(i);
+            if (!rule.isBlank()) compiled.add(compile(rule));
+        }
     }
 
     public CompoundTag save() {
@@ -79,9 +86,11 @@ public final class PortFilterBank implements Predicate<ItemStack> {
 
     public void load(CompoundTag tag, int capacity) {
         whitelist = !tag.contains("Whitelist") || tag.getBoolean("Whitelist");
+        activeCapacity = capacity;
         rules.clear();
         ListTag list = tag.getList("Rules", Tag.TAG_STRING);
-        for (int i = 0; i < Math.min(capacity, list.size()); i++) {
+        // Preserve old saved 20-slot Tier V entries, but hide/disable overflow.
+        for (int i = 0; i < Math.min(20, list.size()); i++) {
             String rule = list.getString(i);
             try { if (!rule.isBlank()) compile(rule); rules.add(rule); }
             catch (IllegalArgumentException ex) { rules.add(""); }

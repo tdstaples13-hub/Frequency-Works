@@ -48,7 +48,8 @@ public final class TransferPortBlockEntity extends BlockEntity {
     public PortFilterBank inputFilter() { return inputFilter; }
     public PortFilterBank outputFilter() { return outputFilter; }
     public int filterCapacity() {
-        int[] counts = {1,2,4,9,20};
+        // Three rows per bank, expanding one column per tier.
+        int[] counts = {3,6,9,12,15};
         return counts[((TransferPortBlock)getBlockState().getBlock()).tierIndex()];
     }
 

@@ -31,6 +31,8 @@ import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
 import dev.frequencyworks.menu.BufferMenu;
+import dev.frequencyworks.menu.PortMenu;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.network.chat.Component;
 import dev.frequencyworks.item.FrequencyDebuggerItem;
@@ -74,6 +76,17 @@ public final class ConfigNetworking {
         PacketDistributor.sendToPlayer(player,new BufferCounts(menuId,scrollRow,capacity,sort,counts.clone()));
     }
 
+    /** Configuration updates target a live PortMenu without replacing the screen.
+     * Cursor-to-ghost actions are still validated against the server menu. */
+    public record PortState(int containerId, CompoundTag state) implements CustomPacketPayload {
+        public static final Type<PortState> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath(FrequencyWorks.MOD_ID, "port_state"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortState> STREAM_CODEC = StreamCodec.of(
+                (b, p) -> { b.writeVarInt(p.containerId); b.writeNbt(p.state); },
+                b -> new PortState(b.readVarInt(), b.readNbt()));
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     private record PendingDelete(FrequencyId frequency, long expires) {}
     private static final Map<UUID,PendingDelete> PENDING_DELETES = new HashMap<>();
     private static boolean mayDebug(ServerPlayer p) { return p.isCreative() && p.hasPermissions(2); }
@@ -86,6 +99,10 @@ public final class ConfigNetworking {
         registrar.playToClient(BufferCounts.TYPE, BufferCounts.STREAM_CODEC, (payload,context) -> {
             if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
                 dev.frequencyworks.client.ConfigClient.receiveCounts(payload);
+        });
+        registrar.playToClient(PortState.TYPE, PortState.STREAM_CODEC, (payload, context) -> {
+            if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                dev.frequencyworks.client.ConfigClient.receivePortState(payload);
         });
     }
 
@@ -193,6 +210,22 @@ public final class ConfigNetworking {
         state.putIntArray("Faces", modes);
         state.put("InputFilter", port.inputFilter().save());
         state.put("OutputFilter", port.outputFilter().save());
+        if (id != null) {
+            // A configured Port is a true container screen. Its player inventory
+            // must remain Minecraft's native slots, not an imitated background.
+            if (player.containerMenu instanceof PortMenu menu && menu.at(pos)) {
+                PacketDistributor.sendToPlayer(player, new PortState(menu.containerId, state));
+                return;
+            }
+            player.openMenu(new SimpleMenuProvider(
+                    (windowId, inventory, viewer) -> new PortMenu(windowId, inventory, pos, port.filterCapacity()),
+                    Component.literal("Transfer Port")
+            ), buffer -> { buffer.writeBlockPos(pos); buffer.writeVarInt(port.filterCapacity()); });
+            if (player.containerMenu instanceof PortMenu menu)
+                PacketDistributor.sendToPlayer(player, new PortState(menu.containerId, state));
+            return;
+        }
+        // Only unassigned Ports still use the initial frequency-binding popup.
         PacketDistributor.sendToPlayer(player, new OpenConfig("port", pos, -1, state));
     }
 
@@ -321,6 +354,27 @@ public final class ConfigNetworking {
                     if (!port.setMode(dir, mode, actor)) message = "Cannot configure this Port face.";
                 }
                 case "stack" -> { if (!port.setStackMode(req.value.equals("true"), actor)) message = "Access denied"; }
+                case "ghost" -> {
+                    if (!req.value.equals("input") && !req.value.equals("output")) {
+                        message = "Invalid ghost filter bank.";
+                    } else if (!(player.containerMenu instanceof PortMenu menu) || !menu.at(req.pos)) {
+                        message = "Open this Port to configure a ghost filter.";
+                    } else {
+                        ItemStack cursor = menu.getCarried();
+                        if (cursor.isEmpty()) {
+                            message = "Pick up an item or configured Tag Card first.";
+                        } else {
+                            String rule = BuiltInRegistries.ITEM.getKey(cursor.getItem()).toString();
+                            if (cursor.getItem() instanceof TagCardItem) {
+                                String tag = TagCardItem.tag(cursor);
+                                if (tag.isEmpty()) rule = "";
+                                else rule = "#" + tag;
+                            }
+                            if (rule.isEmpty() || !port.setFilterRule(req.value.equals("input"), req.slot, rule, actor))
+                                message = "Invalid item/tag or filter slot.";
+                        }
+                    }
+                }
                 case "rule" -> {
                     String[] parts = req.value.split("\\|", 2);
                     if (parts.length != 2 || !port.setFilterRule(parts[0].equals("input"), req.slot, parts[1], actor))

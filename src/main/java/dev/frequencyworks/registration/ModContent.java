@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.inventory.MenuType;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import dev.frequencyworks.menu.BufferMenu;
+import dev.frequencyworks.menu.PortMenu;
 import dev.frequencyworks.item.FrequencyDebuggerItem;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -32,6 +33,8 @@ public final class ModContent {
             DeferredRegister.create(Registries.MENU, FrequencyWorks.MOD_ID);
     public static final DeferredHolder<MenuType<?>, MenuType<BufferMenu>> BUFFER_MENU =
             MENUS.register("buffer_menu", () -> IMenuTypeExtension.create(BufferMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<PortMenu>> PORT_MENU =
+            MENUS.register("port_menu", () -> IMenuTypeExtension.create(PortMenu::new));
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FrequencyWorks.MOD_ID);
 

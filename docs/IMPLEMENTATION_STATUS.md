@@ -1,21 +1,17 @@
-# Frequency Works — implementation status (Alpha A5D)
-
-See `docs/ALPHA_A5D_VANILLA_INVENTORY.md` and `docs/ALPHA_A5C_SCROLLING.md`.
+# Frequency Works — implementation status (Alpha A5G)
 
 ## Implemented for testing
 
-- Five Transfer Buffer tiers with shared frequency storage, bindings and capacity logic.
-- Vanilla chest-style player inventory, hotbar and inventory shortcuts below a scrollable 9-column Buffer storage grid. Custom code is restricted to long-count frequency storage operations, sorting and scrolling.
-- Five Transfer Port tiers with autonomous item-handler transfers and configurable input/output filters, including configured Tag Cards.
-- Creative operator-only Frequency Debugger with two-step frequency deletion and invalidation of old Buffer bindings.
-- Server-side frequency persistence and basic standalone test harnesses.
+- Five shared-frequency Transfer Buffer tiers, vanilla player inventory, long item quantities, scrolling and sorting.
+- Five Transfer Port tiers with a Powah-style six-face selector; independent, simultaneous Import/Export ghost filters with per-tier 3/6/9/12/15 slots per bank; full native player inventory below.
+- Server-validated ghost item selection (cursor item or Tag Card), whitelist/blacklist toggles, transfer-rate toggle, and existing Port automation.
+- Operator debugger, shared frequency persistence and generation invalidation.
+- Full NeoForge compilation is required before any jar is offered.
 
-## Incomplete
+## Incomplete / next alpha
 
-- Item Sequencer execution, Sequence Tablet programming, Interaction Card and Redstone Card instructions.
-- Frequency Monitor UI and behavior.
-- Final models, textures, crafting/upgrade edge cases, modpack compatibility and comprehensive in-game verification.
+- **Next alpha priority:** Item Sequencer execution, Sequence Tablet programming, and instruction processing; Interaction and Redstone Cards.
+- Frequency Monitor UI/functionality; final models, compatibility testing and crafting edge cases.
+- In-game verification of Port ghost filters, direction handling, server synchronization and item counts.
 
-## Build and test status
-
-A5C previously compiled on GitHub. A5D must pass GitHub Actions before a `.jar` is released; gameplay is not validated by compilation alone. Use a disposable ATM10 test world.
+See `docs/ALPHA_A5G_PORT_GUI.md` for Port UI and filter migration behavior.
