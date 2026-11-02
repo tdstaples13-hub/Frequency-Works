@@ -2,8 +2,6 @@ package dev.frequencyworks.client;
 
 import dev.frequencyworks.menu.SequencerMenu;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -15,25 +13,14 @@ import net.minecraft.world.entity.player.Inventory;
 public final class SequencerScreen extends AbstractContainerScreen<SequencerMenu> {
     private static final ResourceLocation CHEST=
         ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png");
-    private Button resume;
     public SequencerScreen(SequencerMenu menu,Inventory inv,Component title){
         super(menu,inv,title);
-        imageWidth=194;imageHeight=131;
+        imageWidth=176;imageHeight=131;
         inventoryLabelY=38;titleLabelY=6;
-    }
-    @Override protected void init(){
-        super.init();
-        resume=addRenderableWidget(Button.builder(Component.literal(">"),b->{
-            if(minecraft!=null && minecraft.gameMode!=null)
-                minecraft.gameMode.handleInventoryButtonClick(menu.containerId,0);
-        }).bounds(leftPos+178,topPos+7,14,18).build());
-        resume.setTooltip(Tooltip.create(Component.literal("Resume after Stop-on-failure")));
     }
     private void drawPanel(GuiGraphics g){
         g.blit(CHEST,leftPos,topPos,0,0,176,35);
         g.blit(CHEST,leftPos,topPos+35,0,126,176,96);
-        g.fill(leftPos+176,topPos,leftPos+imageWidth,topPos+imageHeight,0xFF777777);
-        g.fill(leftPos+177,topPos+1,leftPos+imageWidth-1,topPos+imageHeight-1,0xFFC6C6C6);
     }
     @Override public void renderBackground(GuiGraphics g,int mx,int my,float partial){
         g.fill(0,0,width,height,0x88000000);

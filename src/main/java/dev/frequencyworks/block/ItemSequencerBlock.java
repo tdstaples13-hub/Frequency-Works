@@ -42,8 +42,15 @@ public final class ItemSequencerBlock extends Block implements EntityBlock {
     }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,
                                                            Player player,BlockHitResult hit){
-        if(!level.isClientSide() && player instanceof ServerPlayer server)
-            dev.frequencyworks.network.SequencerNetworking.openSequencer(server,pos);
+        if(!level.isClientSide() && player instanceof ServerPlayer server){
+            if(level.getBlockEntity(pos) instanceof SequencerBlockEntity seq
+                    && player.isShiftKeyDown() && seq.stopped()){
+                seq.resume();
+                server.displayClientMessage(Component.literal("Item Sequencer resumed."),true);
+            } else {
+                dev.frequencyworks.network.SequencerNetworking.openSequencer(server,pos);
+            }
+        }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
     @Override protected void onRemove(BlockState state,Level level,BlockPos pos,BlockState next,boolean moved){

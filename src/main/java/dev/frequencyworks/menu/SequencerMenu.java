@@ -49,10 +49,6 @@ public final class SequencerMenu extends AbstractContainerMenu {
     public int stepIndex(){return counters.get(1);}
     public int remaining(){return counters.get(2);}
     public boolean stopped(){return counters.get(3)!=0;}
-    @Override public boolean clickMenuButton(Player player,int button){
-        if(button==0 && sequencer!=null && sequencer.stillValid(player)){sequencer.resume();return true;}
-        return false;
-    }
     @Override public boolean stillValid(Player player){
         return sequencer==null || sequencer.stillValid(player);
     }
