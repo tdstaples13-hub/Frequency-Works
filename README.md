@@ -1,3 +1,13 @@
+# Frequency Works — Alpha A5 (Inventory and Creative Debugger)
+
+**This is source code, not a precompiled playable JAR.** It must compile in GitHub Actions before use.
+
+Alpha A5 replaces the broken Transfer Buffer screen with actual item slots and the player inventory, and adds a Creative+OP-only Frequency Debugger for permanently deleting and invalidating stored frequencies. See [A5 notes](docs/ALPHA_A5_INVENTORY_AND_DEBUG.md).
+
+After you upload the update, GitHub Actions compiles the mod. If it fails, download the `frequencyworks-build-log` artifact and send the log back for correction. The new GUI has **not yet been tested inside Minecraft**. Test only in a disposable world.
+
+---
+
 # Frequency Works — Minecraft 1.21.1 / NeoForge source
 
 **Alpha A4 Security Source — SOURCE ONLY. Not an installable or verified `.jar`.** Target: NeoForge 21.1.265 / ATM10 8.4.

@@ -14,5 +14,6 @@
   "block.frequencyworks.transfer_buffer_t5": "Dragonbound Transfer Buffer",
   "block.frequencyworks.transfer_port_t5": "Dragonbound Transfer Port",
   "block.frequencyworks.item_sequencer": "Item Sequencer",
-  "block.frequencyworks.frequency_monitor": "Transfer Frequency Monitor"
+  "block.frequencyworks.frequency_monitor": "Transfer Frequency Monitor",
+  "item.frequencyworks.frequency_debugger": "Frequency Debugger (Creative Only)"
 }

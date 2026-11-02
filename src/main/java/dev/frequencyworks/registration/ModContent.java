@@ -13,6 +13,10 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.inventory.MenuType;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import dev.frequencyworks.menu.BufferMenu;
+import dev.frequencyworks.item.FrequencyDebuggerItem;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -24,6 +28,10 @@ public final class ModContent {
     private ModContent() {}
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(FrequencyWorks.MOD_ID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(FrequencyWorks.MOD_ID);
+    public static final DeferredRegister<MenuType<?>> MENUS =
+            DeferredRegister.create(Registries.MENU, FrequencyWorks.MOD_ID);
+    public static final DeferredHolder<MenuType<?>, MenuType<BufferMenu>> BUFFER_MENU =
+            MENUS.register("buffer_menu", () -> IMenuTypeExtension.create(BufferMenu::new));
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FrequencyWorks.MOD_ID);
 
@@ -71,6 +79,9 @@ public final class ModContent {
     public static final DeferredItem<TagCardItem> TAG_CARD = ITEMS.register("tag_card", () -> new TagCardItem(new Item.Properties()));
     public static final DeferredItem<Item> INTERACTION_CARD = ITEMS.registerSimpleItem("interaction_card", new Item.Properties().stacksTo(1));
     public static final DeferredItem<Item> REDSTONE_CARD = ITEMS.registerSimpleItem("redstone_card", new Item.Properties().stacksTo(1));
+    // No recipe; item works only for a creative-mode operator.
+    public static final DeferredItem<FrequencyDebuggerItem> FREQUENCY_DEBUGGER = ITEMS.register("frequency_debugger",
+            () -> new FrequencyDebuggerItem(new Item.Properties().stacksTo(1)));
 
     private static DeferredBlock<TransferBufferBlock> buffer(String name, BufferTier tier) {
         return BLOCKS.register(name, () -> new TransferBufferBlock(BlockBehaviour.Properties.of()

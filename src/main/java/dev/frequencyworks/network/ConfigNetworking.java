@@ -28,6 +28,12 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
+import dev.frequencyworks.menu.BufferMenu;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.network.chat.Component;
+import dev.frequencyworks.item.FrequencyDebuggerItem;
 
 /** Configuration packets are intentionally server-authoritative. Never accept an
  * owner UUID, a remote coordinate, or an inventory from a client as proof of access.
@@ -50,11 +56,37 @@ public final class ConfigNetworking {
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
+    /** Sync real long quantities for the visible frequency cells. Item icons themselves
+     * are synced through Minecraft's normal container-slot packets. */
+    public record BufferCounts(int containerId, int scrollRow, int capacity, String sorting, long[] counts) implements CustomPacketPayload {
+        public static final Type<BufferCounts> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(FrequencyWorks.MOD_ID, "buffer_counts"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, BufferCounts> STREAM_CODEC = StreamCodec.of(
+            (b,p) -> { b.writeVarInt(p.containerId); b.writeVarInt(p.scrollRow); b.writeVarInt(p.capacity);
+                b.writeUtf(p.sorting,32); b.writeVarInt(p.counts.length); for(long n:p.counts) b.writeLong(n); },
+            b -> { int id=b.readVarInt(), scrollRow=b.readVarInt(), capacity=b.readVarInt();
+                String sorting=b.readUtf(32); int size=b.readVarInt();
+                if(size<0 || size>BufferMenu.VIEW_SLOTS) throw new IllegalArgumentException("Invalid buffer count payload");
+                long[] counts=new long[size]; for(int i=0;i<size;i++) counts[i]=b.readLong();
+                return new BufferCounts(id,scrollRow,capacity,sorting,counts); });
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    public static void sendBufferCounts(ServerPlayer player,int menuId,int scrollRow,int capacity,String sort,long[] counts){
+        PacketDistributor.sendToPlayer(player,new BufferCounts(menuId,scrollRow,capacity,sort,counts.clone()));
+    }
+
+    private record PendingDelete(FrequencyId frequency, long expires) {}
+    private static final Map<UUID,PendingDelete> PENDING_DELETES = new HashMap<>();
+    private static boolean mayDebug(ServerPlayer p) { return p.isCreative() && p.hasPermissions(2); }
+
     public static void register(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar("2");
         registrar.playToClient(OpenConfig.TYPE, OpenConfig.STREAM_CODEC,
                 (payload, context) -> clientOpen(payload));
         registrar.playToServer(Action.TYPE, Action.STREAM_CODEC, ConfigNetworking::handleAction);
+        registrar.playToClient(BufferCounts.TYPE, BufferCounts.STREAM_CODEC, (payload,context) -> {
+            if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                dev.frequencyworks.client.ConfigClient.receiveCounts(payload);
+        });
     }
 
     /** Invoked on client only; keeps client-only Minecraft classes out of common classes. */
@@ -66,13 +98,33 @@ public final class ConfigNetworking {
     public static void openBuffer(ServerPlayer player, BlockPos pos) {
         if (!near(player, pos)) return;
         if (!(player.serverLevel().getBlockEntity(pos) instanceof TransferBufferBlockEntity buffer)) return;
+        buffer.ensureCurrent();
         showBuffer(player, pos, -1, buffer.binding(), ((TransferBufferBlock)buffer.getBlockState().getBlock()).tier(), "", false, "");
     }
     public static void openHeldBuffer(ServerPlayer player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!(stack.getItem() instanceof TransferBufferItem buffer)) return;
+        FrequencyId id = TransferBufferItem.binding(stack);
+        if (id != null && !FrequencySavedData.get(player.serverLevel()).isCurrent(id, TransferBufferItem.generation(stack))) {
+            TransferBufferItem.clearBinding(stack); id = null;
+        }
         showBuffer(player, BlockPos.ZERO, hand == InteractionHand.MAIN_HAND ? 0 : 1,
-                TransferBufferItem.binding(stack), buffer.tier(), "", false, "");
+                id, buffer.tier(), "", false, "");
+    }
+    public static void openHeldDebugger(ServerPlayer player, InteractionHand hand) {
+        if (!mayDebug(player)) {
+            player.displayClientMessage(Component.literal("Frequency Debugger requires Creative Mode and operator permission."), true);
+            return;
+        }
+        showDebugger(player, hand == InteractionHand.MAIN_HAND ? 0 : 1, "", false, "");
+    }
+    private static void showDebugger(ServerPlayer player,int hand,String warning,boolean confirm,String pending) {
+        CompoundTag state = new CompoundTag();
+        state.putBoolean("Assigned", true);
+        state.putString("Warning", warning);
+        state.putBoolean("Confirm",confirm);
+        state.putString("Pending",pending);
+        PacketDistributor.sendToPlayer(player,new OpenConfig("debug",BlockPos.ZERO,hand,state));
     }
     public static void openHeldTag(ServerPlayer player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
@@ -106,42 +158,25 @@ public final class ConfigNetworking {
         if (id != null) {
             state.putString("Frequency", id.displayNumber());
             state.putBoolean("Private", id.scope() == FrequencyId.Scope.PRIVATE);
-            if (!id.accessibleBy(player.getUUID())) {
-                state.putString("Error", "Private frequency: access denied");
-            } else {
-                var frequency = FrequencySavedData.get(player.serverLevel()).activateBuffer(id, physicalTier);
-                if (frequency.tier().ordinal() > physicalTier.ordinal()) {
+            FrequencySavedData data = FrequencySavedData.get(player.serverLevel());
+            if (!id.accessibleBy(player.getUUID())) state.putString("Error", "Private frequency: access denied");
+            else if (!data.exists(id)) state.putString("Error", "Frequency no longer exists. This Buffer must be reset.");
+            else {
+                var network = data.activateBuffer(id,physicalTier);
+                if (network.tier().ordinal() > physicalTier.ordinal())
                     state.putString("Error", "This Buffer cannot display the contents of " + id.displayNumber() + " due to tier incompatibility.");
-                } else {
-                    state.putInt("EffectiveTier", frequency.tier().ordinal()+1);
-                    state.putInt("Slots", frequency.tier().slots());
-                    state.putInt("Occupied", frequency.occupiedSlots());
-                    state.putLong("TotalItems", frequency.totalItems());
-                    state.putString("Sort", frequency.sorting().name());
-                    ListTag items = new ListTag();
-                    for (var entry : frequency.sortedSnapshot()) {
-                        CompoundTag t = new CompoundTag();
-                        t.putLong("EntryId", entry.id());
-                        t.putString("Name", entry.prototype().getHoverName().getString());
-                        t.putLong("Count", entry.quantity());
-                        items.add(t);
-                    }
-                    state.put("Items", items);
-                    // A small, static player-inventory snapshot is sent only when opening
-                    // or updating this GUI, never during the Port's transfer tick.
-                    ListTag personal = new ListTag();
-                    for (int i = 0; i < 36; i++) {
-                        ItemStack stack = player.getInventory().getItem(i);
-                        CompoundTag item = new CompoundTag();
-                        item.putString("Name", stack.isEmpty() ? "(empty)" : stack.getHoverName().getString());
-                        item.putInt("Count", stack.getCount());
-                        personal.add(item);
-                    }
-                    state.put("PlayerItems", personal);
+                else {
+                    final FrequencyId menuId=id;
+                    final int menuHand=hand;
+                    player.openMenu(new SimpleMenuProvider(
+                        (windowId,inventory,viewer) -> new BufferMenu(windowId,inventory,player,menuId,physicalTier.ordinal()+1,pos,menuHand),
+                        Component.literal("Frequency "+id.displayNumber()+(id.scope()==FrequencyId.Scope.PRIVATE?" (Private)":" (Public)"))
+                    ), data -> data.writeVarInt(physicalTier.ordinal() + 1));
+                    return;
                 }
             }
         }
-        PacketDistributor.sendToPlayer(player, new OpenConfig("buffer", pos, hand, state));
+        PacketDistributor.sendToPlayer(player,new OpenConfig("buffer",pos,hand,state));
     }
     private static void showPort(ServerPlayer player, BlockPos pos, TransferPortBlockEntity port, String message, String pending) {
         CompoundTag state = new CompoundTag();
@@ -169,6 +204,8 @@ public final class ConfigNetworking {
             ItemStack held = player.getItemInHand(hand);
             if (held.getItem() instanceof TransferBufferItem item) {
                 changeBuffer(player, request, TransferBufferItem.binding(held), item.tier(), held, null);
+            } else if (held.getItem() instanceof FrequencyDebuggerItem) {
+                handleDebug(player, request);
             } else if (held.getItem() instanceof TagCardItem && request.action.equals("tag_set")) {
                 String warning = TagCardItem.setTag(held, request.value) ? "" : "Invalid item tag";
                 showTag(player, request.hand, TagCardItem.tag(held), warning);
@@ -177,6 +214,7 @@ public final class ConfigNetworking {
             if (!near(player, request.pos)) return;
             var be = player.serverLevel().getBlockEntity(request.pos);
             if (be instanceof TransferBufferBlockEntity buffer) {
+                buffer.ensureCurrent();
                 changeBuffer(player, request, buffer.binding(),
                         ((TransferBufferBlock) buffer.getBlockState().getBlock()).tier(), null, buffer);
             } else if (be instanceof TransferPortBlockEntity port) {
@@ -208,7 +246,7 @@ public final class ConfigNetworking {
                 message = "Frequency already exists. Joining it permanently will share its inventory.";
                 confirm = true;
             } else {
-                if (held != null) { TransferBufferItem.setBinding(held, candidate); data.activateBuffer(candidate, tier); }
+                if (held != null) { data.activateBuffer(candidate, tier); TransferBufferItem.setBinding(held, candidate, data.generation(candidate)); }
                 else if (block != null) block.bind(candidate, tier);
                 current = candidate;
             }
@@ -242,6 +280,31 @@ public final class ConfigNetworking {
         }
         showBuffer(player, req.pos, req.hand, current, tier, message, confirm, confirm ? req.value : "");
     }
+    /** Two-step server-confirmed destructive deletion. Does NOT trust a client confirm flag. */
+    private static void handleDebug(ServerPlayer player, Action req) {
+        if (!mayDebug(player)) return;
+        if (req.action.equals("debug_delete")) {
+            FrequencyId id = selected(player,req.value);
+            if (id == null || !FrequencySavedData.get(player.serverLevel()).exists(id)) {
+                PENDING_DELETES.remove(player.getUUID());
+                showDebugger(player,req.hand,"That frequency does not exist.",false,req.value);
+                return;
+            }
+            PENDING_DELETES.put(player.getUUID(),new PendingDelete(id,player.serverLevel().getGameTime()+600));
+            showDebugger(player,req.hand,"WARNING: Permanently delete all items and reset bound Buffers?",true,req.value);
+        } else if (req.action.equals("debug_confirm")) {
+            PendingDelete pending = PENDING_DELETES.remove(player.getUUID());
+            FrequencyId requested = selected(player,req.value);
+            if (pending == null || requested == null || !pending.frequency().equals(requested)
+                  || player.serverLevel().getGameTime() > pending.expires()) {
+                showDebugger(player,req.hand,"Deletion confirmation expired. Start again.",false,"");
+                return;
+            }
+            boolean deleted = FrequencySavedData.get(player.serverLevel()).delete(requested);
+            showDebugger(player,req.hand,deleted ? "Frequency deleted; old Buffer bindings invalidated." : "Frequency not found.",false,"");
+        }
+    }
+
     private static void changePort(ServerPlayer player, Action req, TransferPortBlockEntity port) {
         UUID actor = player.getUUID();
         String message = "";

@@ -19,6 +19,7 @@ public final class BufferSecurityEvents {
     public static void onBreak(BlockEvent.BreakEvent event) {
         if (!(event.getState().getBlock() instanceof TransferBufferBlock)) return;
         if (!(event.getLevel().getBlockEntity(event.getPos()) instanceof TransferBufferBlockEntity buffer)) return;
+        buffer.ensureCurrent();
         if (!BufferSecurityPolicy.mayPlayerBreak(buffer.binding(), event.getPlayer().getUUID())) {
             event.setCanceled(true);
             event.getPlayer().displayClientMessage(Component.literal("This Transfer Buffer belongs to another player."), true);

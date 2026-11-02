@@ -18,6 +18,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  * All reads and writes MUST occur on the logical server thread. */
 public final class FrequencySavedData extends SavedData {
     private final Map<FrequencyId, StoredFrequency> frequencies = new HashMap<>();
+    // Tombstone generations prevent old placed/portable Buffers from resurrecting a deleted network.
+    private final Map<FrequencyId, Long> generations = new HashMap<>();
 
     public static FrequencySavedData get(ServerLevel level) {
         ServerLevel overworld = level.getServer().overworld();
@@ -27,6 +29,18 @@ public final class FrequencySavedData extends SavedData {
     }
 
     public boolean exists(FrequencyId id) { return frequencies.containsKey(id); }
+    public long generation(FrequencyId id) { return generations.getOrDefault(id, 0L); }
+    public boolean isCurrent(FrequencyId id, long generation) {
+        return id != null && frequencies.containsKey(id) && generation(id) == generation;
+    }
+    /** Destructive, operator-only caller. Persistent tombstone invalidates ALL old bindings,
+     * including items in offline players' inventories and blocks in unloaded chunks. */
+    public boolean delete(FrequencyId id) {
+        if (frequencies.remove(id) == null) return false;
+        generations.put(id, generation(id) + 1L);
+        setDirty();
+        return true;
+    }
 
     /** Call ONLY after a player has successfully bound a Buffer to this frequency. */
     public StoredFrequency activateBuffer(FrequencyId id, BufferTier tier) {
@@ -69,6 +83,8 @@ public final class FrequencySavedData extends SavedData {
         }
 
         private BufferTier tier;
+        private long revision;
+        public long revision() { return revision; }
         private NetworkInventory.SortMode sorting = NetworkInventory.SortMode.QUANTITY_DESC;
         private final List<Entry> entries = new ArrayList<>();
         private long nextEntryId = 1L;
@@ -80,9 +96,13 @@ public final class FrequencySavedData extends SavedData {
         public boolean promote(BufferTier upgraded) {
             if (upgraded.ordinal() <= tier.ordinal()) return false;
             tier = upgraded;
+            revision++;
             return true;
         }
-        public void sorting(NetworkInventory.SortMode setting) { sorting = Objects.requireNonNull(setting); }
+        public void sorting(NetworkInventory.SortMode setting) {
+            setting = Objects.requireNonNull(setting);
+            if (setting != sorting) { sorting = setting; revision++; }
+        }
 
         private Entry matching(ItemStack stack) {
             for (Entry entry : entries) {
@@ -111,6 +131,7 @@ public final class FrequencySavedData extends SavedData {
             Entry entry = matching(item);
             if (entry == null) entries.add(new Entry(nextEntryId++, item, accepted));
             else entry.quantity += accepted;
+            revision++;
             return accepted;
         }
 
@@ -126,6 +147,7 @@ public final class FrequencySavedData extends SavedData {
             int withdrawn = (int) Math.min(entry.quantity, count);
             entry.quantity -= withdrawn;
             if (entry.quantity == 0) entries.remove(entry);
+            if (withdrawn > 0) revision++;
             return withdrawn;
         }
 
@@ -194,6 +216,14 @@ public final class FrequencySavedData extends SavedData {
                 result.frequencies.put(id, network);
             } catch (IllegalArgumentException ignored) { /* malformed network is not authorized */ }
         }
+        for (var t : root.getList("Tombstones", Tag.TAG_COMPOUND)) {
+            if (!(t instanceof CompoundTag compound)) continue;
+            try {
+                var key = FrequencyNbt.decode(compound.getCompound("Identity"));
+                long generation = compound.getLong("Generation");
+                if (generation > 0) result.generations.put(key, generation);
+            } catch (RuntimeException ignored) { }
+        }
         return result;
     }
 
@@ -217,6 +247,14 @@ public final class FrequencySavedData extends SavedData {
             list.add(t);
         }
         root.put("Networks", list);
+        ListTag tombstones = new ListTag();
+        for (var pair : generations.entrySet()) {
+            CompoundTag entry = new CompoundTag();
+            entry.put("Identity", FrequencyNbt.encode(pair.getKey()));
+            entry.putLong("Generation", pair.getValue());
+            tombstones.add(entry);
+        }
+        root.put("Tombstones", tombstones);
         return root;
     }
 }

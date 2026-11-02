@@ -2,7 +2,7 @@ name: Build NeoForge mod
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, alpha-a5c-build]
     paths:
       - 'src/**'
       - 'build.gradle'

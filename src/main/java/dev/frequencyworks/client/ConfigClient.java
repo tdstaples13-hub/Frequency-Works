@@ -6,6 +6,14 @@ import net.minecraft.client.Minecraft;
 /** Called only when a registered clientbound config packet arrives. */
 public final class ConfigClient {
     private ConfigClient() {}
+    public static void receiveCounts(ConfigNetworking.BufferCounts payload) {
+        Minecraft client=Minecraft.getInstance();
+        client.execute(() -> {
+            if (client.player != null && client.player.containerMenu instanceof dev.frequencyworks.menu.BufferMenu menu
+                && menu.containerId == payload.containerId())
+                menu.updateClient(payload.scrollRow(),payload.capacity(),payload.sorting(),payload.counts());
+        });
+    }
     public static void open(ConfigNetworking.OpenConfig packet) {
         Minecraft client = Minecraft.getInstance();
         if (client.screen instanceof ConfigScreen existing && existing.sameTarget(packet)) {

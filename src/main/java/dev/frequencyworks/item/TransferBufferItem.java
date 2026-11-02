@@ -38,9 +38,18 @@ public final class TransferBufferItem extends BlockItem {
         catch (IllegalArgumentException ex) { return null; }
     }
 
-    public static void setBinding(ItemStack stack, FrequencyId id) {
+    public static long generation(ItemStack stack) {
+        CustomData custom = stack.get(DataComponents.CUSTOM_DATA);
+        return custom == null ? 0L : custom.copyTag().getLong("FrequencyWorksGeneration");
+    }
+    public static void clearBinding(ItemStack stack) {
+        stack.remove(DataComponents.CUSTOM_DATA);
+    }
+    public static void setBinding(ItemStack stack, FrequencyId id) { setBinding(stack, id, 0L); }
+    public static void setBinding(ItemStack stack, FrequencyId id, long generation) {
         CompoundTag tag = new CompoundTag();
         tag.put("FrequencyWorksBinding", FrequencyNbt.encode(id));
+        tag.putLong("FrequencyWorksGeneration", generation);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
@@ -72,8 +81,11 @@ public final class TransferBufferItem extends BlockItem {
     @Override public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!BufferSecurityPolicy.mayPlayerAccess(binding(stack), player.getUUID())) return InteractionResultHolder.fail(stack);
-        if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
+        if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            FrequencyId id = binding(stack);
+            if (id != null && !FrequencySavedData.get(serverPlayer.serverLevel()).isCurrent(id, generation(stack))) clearBinding(stack);
             dev.frequencyworks.network.ConfigNetworking.openHeldBuffer(serverPlayer, hand);
+        }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 }

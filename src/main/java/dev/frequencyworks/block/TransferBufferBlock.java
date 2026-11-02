@@ -40,7 +40,7 @@ public final class TransferBufferBlock extends Block implements EntityBlock {
         if (!(placer instanceof Player player) || level.isClientSide()) return;
         if (level.getBlockEntity(pos) instanceof TransferBufferBlockEntity buffer) {
             FrequencyId id = TransferBufferItem.binding(stack);
-            if (id != null) buffer.restoreFromItem(id, tier, player.getUUID());
+            if (id != null) buffer.restoreFromItem(id, TransferBufferItem.generation(stack), tier, player.getUUID());
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
                 dev.frequencyworks.network.ConfigNetworking.openBuffer(serverPlayer, pos);
         }
@@ -48,6 +48,7 @@ public final class TransferBufferBlock extends Block implements EntityBlock {
 
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            if (level.getBlockEntity(pos) instanceof TransferBufferBlockEntity buffer) buffer.ensureCurrent();
             if (level.getBlockEntity(pos) instanceof TransferBufferBlockEntity buffer
                     && !BufferSecurityPolicy.mayPlayerAccess(buffer.binding(), player.getUUID())) {
                 player.displayClientMessage(Component.literal("You do not have permission to access this Transfer Buffer."), true);
@@ -61,8 +62,9 @@ public final class TransferBufferBlock extends Block implements EntityBlock {
     @Override public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide() && !player.isCreative() && level.getBlockEntity(pos) instanceof TransferBufferBlockEntity buffer
                 && BufferSecurityPolicy.mayPlayerBreak(buffer.binding(), player.getUUID())) {
+            buffer.ensureCurrent();
             ItemStack item = new ItemStack(this);
-            if (buffer.binding() != null) TransferBufferItem.setBinding(item, buffer.binding());
+            if (buffer.binding() != null) TransferBufferItem.setBinding(item, buffer.binding(), buffer.generation());
             popResource(level, pos, item);
         }
         // No vanilla loot-table drop for Buffers: prevent a second unbound item.
@@ -77,8 +79,9 @@ public final class TransferBufferBlock extends Block implements EntityBlock {
         // Private low-tier Buffer drops nothing (the frequency inventory remains saved).
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof TransferBufferBlockEntity buffer) {
             if (BufferSecurityPolicy.dropsOnExplosion(tier, buffer.binding())) {
+                buffer.ensureCurrent();
                 ItemStack result = new ItemStack(this);
-                if (buffer.binding() != null) TransferBufferItem.setBinding(result, buffer.binding());
+                if (buffer.binding() != null) TransferBufferItem.setBinding(result, buffer.binding(), buffer.generation());
                 dropConsumer.accept(result, pos);
             }
         }

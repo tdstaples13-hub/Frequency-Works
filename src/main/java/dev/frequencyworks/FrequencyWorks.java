@@ -15,6 +15,7 @@ public final class FrequencyWorks {
         ModContent.BLOCKS.register(modBus);
         ModContent.ITEMS.register(modBus);
         ModContent.BLOCK_ENTITIES.register(modBus);
+        ModContent.MENUS.register(modBus);
         modBus.addListener(ConfigNetworking::register);
         NeoForge.EVENT_BUS.addListener(FrequencyCommands::register);
         NeoForge.EVENT_BUS.addListener(BufferSecurityEvents::onBreak);
