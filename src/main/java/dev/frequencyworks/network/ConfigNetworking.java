@@ -158,11 +158,11 @@ public final class ConfigNetworking {
         if (id != null) {
             state.putString("Frequency", id.displayNumber());
             state.putBoolean("Private", id.scope() == FrequencyId.Scope.PRIVATE);
-            FrequencySavedData data = FrequencySavedData.get(player.serverLevel());
+            FrequencySavedData frequencyData = FrequencySavedData.get(player.serverLevel());
             if (!id.accessibleBy(player.getUUID())) state.putString("Error", "Private frequency: access denied");
-            else if (!data.exists(id)) state.putString("Error", "Frequency no longer exists. This Buffer must be reset.");
+            else if (!frequencyData.exists(id)) state.putString("Error", "Frequency no longer exists. This Buffer must be reset.");
             else {
-                var network = data.activateBuffer(id,physicalTier);
+                var network = frequencyData.activateBuffer(id,physicalTier);
                 if (network.tier().ordinal() > physicalTier.ordinal())
                     state.putString("Error", "This Buffer cannot display the contents of " + id.displayNumber() + " due to tier incompatibility.");
                 else {
