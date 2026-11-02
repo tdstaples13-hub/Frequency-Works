@@ -59,6 +59,10 @@ public final class ModContent {
     public static final DeferredBlock<TransferPortBlock> PORT_4 = port("transfer_port_t4", 3);
     public static final DeferredBlock<TransferPortBlock> PORT_5 = port("transfer_port_t5", 4);
 
+    public static final DeferredBlock<ItemSequencerBlock> ITEM_SEQUENCER =
+            BLOCKS.register("item_sequencer", () -> new ItemSequencerBlock(BlockBehaviour.Properties.of().strength(2.0F)));
+    public static final DeferredBlock<Block> FREQUENCY_MONITOR = simpleBlock("frequency_monitor");
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TransferBufferBlockEntity>> BUFFER_ENTITY =
             BLOCK_ENTITIES.register("transfer_buffer", () -> BlockEntityType.Builder.of(
                     TransferBufferBlockEntity::new,
@@ -74,9 +78,6 @@ public final class ModContent {
                     SequencerBlockEntity::new, ITEM_SEQUENCER.get()
             ).build(null));
 
-    public static final DeferredBlock<ItemSequencerBlock> ITEM_SEQUENCER =
-            BLOCKS.register("item_sequencer", () -> new ItemSequencerBlock(BlockBehaviour.Properties.of().strength(2.0F)));
-    public static final DeferredBlock<Block> FREQUENCY_MONITOR = simpleBlock("frequency_monitor");
 
     public static final DeferredItem<TransferBufferItem> BUFFER_ITEM_1 = bufferItem("transfer_buffer_t1", BUFFER_1, BufferTier.TETHERED);
     public static final DeferredItem<TransferBufferItem> BUFFER_ITEM_2 = bufferItem("transfer_buffer_t2", BUFFER_2, BufferTier.GILDED);
