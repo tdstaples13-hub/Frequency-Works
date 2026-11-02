@@ -104,35 +104,47 @@ public final class FrequencySavedData extends SavedData {
             if (setting != sorting) { sorting = setting; revision++; }
         }
 
-        private Entry matching(ItemStack stack) {
-            for (Entry entry : entries) {
-                if (ItemStack.isSameItemSameComponents(entry.prototype, stack)) return entry;
-            }
-            return null;
-        }
-
+        /** A distinct item may legitimately occupy several physical storage slots.
+         * Capacity is allocated per slot, exactly as for a Dank-style inventory. */
         public long count(ItemStack item) {
-            Entry entry = matching(item);
-            return entry == null ? 0 : entry.quantity;
+            if (item.isEmpty()) return 0L;
+            long total = 0L;
+            for (Entry entry : entries)
+                if (ItemStack.isSameItemSameComponents(entry.prototype, item)) total += entry.quantity;
+            return total;
         }
 
         public long capacityFor(ItemStack item) {
-            if (item.isEmpty()) return 0;
-            Entry entry = matching(item);
-            if (entry == null) return entries.size() < tier.slots() ? tier.perSlot() : 0L;
-            return Math.max(0L, tier.perSlot() - entry.quantity);
+            if (item.isEmpty()) return 0L;
+            long available = (long) Math.max(0, tier.slots() - entries.size()) * tier.perSlot();
+            for (Entry entry : entries)
+                if (ItemStack.isSameItemSameComponents(entry.prototype, item))
+                    available += tier.perSlot() - entry.quantity;
+            return available;
         }
 
-        /** Returns the ACTUAL amount stored. Caller must handle any unexpected remainder. */
+        /** Fill partially occupied matching slots first, then allocate new slots.
+         * Never put more than tier.perSlot() items into a physical slot. */
         public int insert(ItemStack item) {
             if (item.isEmpty()) return 0;
-            int accepted = (int) Math.min((long) item.getCount(), capacityFor(item));
-            if (accepted <= 0) return 0;
-            Entry entry = matching(item);
-            if (entry == null) entries.add(new Entry(nextEntryId++, item, accepted));
-            else entry.quantity += accepted;
-            revision++;
-            return accepted;
+            int remaining = item.getCount();
+            for (Entry entry : entries) {
+                if (remaining <= 0) break;
+                if (!ItemStack.isSameItemSameComponents(entry.prototype, item)) continue;
+                int accepted = (int) Math.min((long) remaining, tier.perSlot() - entry.quantity);
+                if (accepted > 0) {
+                    entry.quantity += accepted;
+                    remaining -= accepted;
+                }
+            }
+            while (remaining > 0 && entries.size() < tier.slots()) {
+                int accepted = (int) Math.min((long) remaining, tier.perSlot());
+                entries.add(new Entry(nextEntryId++, item, accepted));
+                remaining -= accepted;
+            }
+            int inserted = item.getCount() - remaining;
+            if (inserted > 0) revision++;
+            return inserted;
         }
 
         /** Stable identity for GUI rows. A stale click must never retrieve a different item
@@ -141,12 +153,36 @@ public final class FrequencySavedData extends SavedData {
             return entries.stream().filter(e -> e.id == id).findFirst();
         }
 
+        /** Withdraw from this exact visible slot, not another copy of the same item. */
+        public int withdrawEntry(long entryId, int count) {
+            if (count <= 0) return 0;
+            Iterator<Entry> it = entries.iterator();
+            while (it.hasNext()) {
+                Entry entry = it.next();
+                if (entry.id != entryId) continue;
+                int withdrawn = (int) Math.min(entry.quantity, count);
+                entry.quantity -= withdrawn;
+                if (entry.quantity == 0) it.remove();
+                if (withdrawn > 0) revision++;
+                return withdrawn;
+            }
+            return 0;
+        }
+
+        /** Automation may span several slots holding the same item type. */
         public int withdraw(ItemStack item, int count) {
-            Entry entry = matching(item);
-            if (entry == null || count <= 0) return 0;
-            int withdrawn = (int) Math.min(entry.quantity, count);
-            entry.quantity -= withdrawn;
-            if (entry.quantity == 0) entries.remove(entry);
+            if (count <= 0 || item.isEmpty()) return 0;
+            int remaining = count;
+            Iterator<Entry> it = entries.iterator();
+            while (it.hasNext() && remaining > 0) {
+                Entry entry = it.next();
+                if (!ItemStack.isSameItemSameComponents(entry.prototype, item)) continue;
+                int withdrawn = (int) Math.min(entry.quantity, remaining);
+                entry.quantity -= withdrawn;
+                remaining -= withdrawn;
+                if (entry.quantity == 0) it.remove();
+            }
+            int withdrawn = count - remaining;
             if (withdrawn > 0) revision++;
             return withdrawn;
         }
@@ -206,8 +242,7 @@ public final class FrequencySavedData extends SavedData {
                     ItemStack prototype = ItemStack.parseOptional(registries, itemTag.getCompound("Prototype"));
                     long count = itemTag.getLong("Amount");
                     if (prototype.isEmpty() || count <= 0 || count > network.tier.perSlot()
-                            || network.entries.size() >= network.tier.slots()
-                            || network.matching(prototype) != null) continue;
+                            || network.entries.size() >= network.tier.slots()) continue;
                     long entryId = itemTag.getLong("EntryId");
                     if (entryId <= 0 || network.findEntry(entryId).isPresent()) entryId = network.nextEntryId;
                     network.entries.add(new StoredFrequency.Entry(entryId, prototype, count));

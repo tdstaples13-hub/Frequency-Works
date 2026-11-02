@@ -185,7 +185,7 @@ public final class BufferMenu extends AbstractContainerMenu {
                         int amount = (int)Math.min(entry.quantity(), entry.prototype().getMaxStackSize());
                         net.minecraft.world.item.ItemStack result = moveToInventory(entry.prototype(), amount);
                         int moved = amount - result.getCount();
-                        if (moved > 0) store.withdraw(entry.prototype(), moved);
+                        if (moved > 0) store.withdrawEntry(entry.id(), moved);
                     }
                 }
             } else if (click == ClickType.PICKUP && (mouseButton == 0 || mouseButton == 1)) {
@@ -200,7 +200,7 @@ public final class BufferMenu extends AbstractContainerMenu {
                     if (entry != null) {
                         int max = entry.prototype().getMaxStackSize();
                         int request = mouseButton == 1 ? 1 : max;
-                        int taken = store.withdraw(entry.prototype(), request);
+                        int taken = store.withdrawEntry(entry.id(), request);
                         if (taken > 0) setCarried(entry.prototype().copyWithCount(taken));
                     }
                 }

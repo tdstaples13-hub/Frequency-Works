@@ -34,9 +34,25 @@ public final class CoreChecks {
         assert inv.extract(iron, 999) == 64;
         assert inv.count(iron) == 0;
         assert inv.extract(iron, 1) == 0;
-        assert inv.insert(gold, Long.MAX_VALUE) == BufferTier.DRAGONBOUND.perSlot() - 64;
-        assert inv.count(gold) == BufferTier.DRAGONBOUND.perSlot();
-        assert inv.insert(gold, 1) == 0; // full
+        assert inv.insert(gold, Long.MAX_VALUE) == (long) BufferTier.DRAGONBOUND.slots() * BufferTier.DRAGONBOUND.perSlot() - 64;
+        assert inv.occupiedSlots() == BufferTier.DRAGONBOUND.slots();
+        assert inv.count(gold) == (long) BufferTier.DRAGONBOUND.slots() * BufferTier.DRAGONBOUND.perSlot();
+        assert inv.insert(gold, 1) == 0; // all physical slots full
+        var small = new NetworkInventory(BufferTier.TETHERED);
+        ItemIdentity cobble = new ItemIdentity("minecraft:cobblestone", "", "Cobblestone");
+        assert small.insert(cobble, 4096) == 4096;
+        assert small.occupiedSlots() == 1;
+        assert small.insert(cobble, 64) == 64; // fills next slot automatically
+        assert small.occupiedSlots() == 2;
+        assert small.count(cobble) == 4160;
+        assert small.extract(cobble, 4098) == 4098;
+        assert small.count(cobble) == 62;
+        assert small.occupiedSlots() == 1;
+        assert small.insert(cobble, 4096 * 26) == 4096 * 26;
+        assert small.occupiedSlots() == 27;
+        assert small.insert(cobble, 4096) == 4034;
+        assert small.insert(cobble, 1) == 0;
+        assert small.count(cobble) == 4096L * 27;
         inv.setSortMode(NetworkInventory.SortMode.ALPHABETICAL);
         inv.setSortMode(NetworkInventory.SortMode.MOD_ALPHABETICAL);
 

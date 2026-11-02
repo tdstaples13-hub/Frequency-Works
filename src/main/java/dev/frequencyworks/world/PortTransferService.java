@@ -72,7 +72,7 @@ public final class PortTransferService {
             int accepted = amount - remainder.getCount();
             if (accepted <= 0) continue;
             // The count is guaranteed present because every Port operates on the server thread.
-            int debited = frequency.withdraw(prototype, accepted);
+            int debited = frequency.withdrawEntry(entry.id(), accepted);
             if (debited != accepted)
                 throw new IllegalStateException("Shared frequency changed during synchronous insertion");
             return accepted;

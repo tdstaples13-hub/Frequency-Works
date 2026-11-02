@@ -8,8 +8,6 @@ import dev.frequencyworks.world.FrequencyNbt;
 import dev.frequencyworks.world.FrequencySavedData;
 import dev.frequencyworks.world.PortTransferService;
 import java.util.UUID;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -54,35 +52,19 @@ public final class TransferPortBlockEntity extends BlockEntity {
         return counts[((TransferPortBlock)getBlockState().getBlock()).tierIndex()];
     }
 
-    /** Configuration-time safety check: both directions may not admit any same item ID.
-     * Checks tag membership once on edits. No runtime global loop detector.
-     */
-    private boolean safeFilterPair() {
-        boolean hasInput = false, hasOutput = false;
-        for (FaceMode mode : faces) {
-            hasInput |= mode == FaceMode.INPUT || mode == FaceMode.BOTH;
-            hasOutput |= mode == FaceMode.OUTPUT || mode == FaceMode.BOTH;
-        }
-        if (!hasInput || !hasOutput) return true;
-        for (var item : BuiltInRegistries.ITEM) {
-            ItemStack probe = new ItemStack(item);
-            if (inputFilter.test(probe) && outputFilter.test(probe)) return false;
-        }
-        return true;
-    }
+    /** Both directions are selectable even before filters are configured.
+     * When a face is in BOTH mode, export excludes anything import-eligible
+     * on that face, preventing a simple host<->frequency feedback loop. */
     public boolean setFilterRule(boolean incoming, int slot, String rule, UUID actor) {
         if (!canConfigure(actor)) return false;
         PortFilterBank bank = incoming ? inputFilter : outputFilter;
-        CompoundTag backup = bank.save();
         if (!bank.put(slot, rule, filterCapacity())) return false;
-        if (!safeFilterPair()) { bank.load(backup, filterCapacity()); return false; }
         retryAt = 0; setChanged(); return true;
     }
     public boolean setFilterWhitelist(boolean incoming, boolean whitelist, UUID actor) {
         if (!canConfigure(actor)) return false;
         PortFilterBank bank = incoming ? inputFilter : outputFilter;
-        boolean old = bank.whitelist(); bank.whitelist(whitelist);
-        if (!safeFilterPair()) { bank.whitelist(old); return false; }
+        bank.whitelist(whitelist);
         retryAt = 0; setChanged(); return true;
     }
 
@@ -97,9 +79,7 @@ public final class TransferPortBlockEntity extends BlockEntity {
 
     public boolean setMode(Direction side, FaceMode mode, UUID actor) {
         if (binding == null || !canConfigure(actor)) return false;
-        FaceMode before = faces[side.ordinal()];
         faces[side.ordinal()] = mode;
-        if (!safeFilterPair()) { faces[side.ordinal()] = before; return false; }
         retryAt = 0;
         setChanged();
         return true;
@@ -172,8 +152,14 @@ public final class TransferPortBlockEntity extends BlockEntity {
                         port.slotCursors[dir], port.inputFilter);
             }
             if (transfer == 0 && (mode == FaceMode.OUTPUT || mode == FaceMode.BOTH)) {
+                // BOTH must not export an item the same face would immediately
+                // re-import; separate one-way faces keep their configured filters.
+                java.util.function.Predicate<net.minecraft.world.item.ItemStack> allowed =
+                    mode == FaceMode.BOTH
+                        ? item -> port.outputFilter.test(item) && !port.inputFilter.test(item)
+                        : port.outputFilter;
                 transfer = PortTransferService.pushToMachine(handler, network, maxCount,
-                        port.slotCursors[dir], port.outputFilter);
+                        port.slotCursors[dir], allowed);
             }
             port.slotCursors[dir]++; // no systematic preference for slot zero
             if (transfer > 0) {
@@ -212,7 +198,5 @@ public final class TransferPortBlockEntity extends BlockEntity {
             faces[i] = i < modes.length && modes[i] >= 0 && modes[i] < FaceMode.values().length
                     ? FaceMode.values()[modes[i]] : FaceMode.NONE;
         }
-        // Any legacy unsafe dual-direction configuration is disabled on load.
-        if (!safeFilterPair()) java.util.Arrays.fill(faces, FaceMode.NONE);
     }
 }

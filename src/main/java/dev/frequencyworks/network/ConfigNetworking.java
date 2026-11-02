@@ -158,11 +158,11 @@ public final class ConfigNetworking {
         if (id != null) {
             state.putString("Frequency", id.displayNumber());
             state.putBoolean("Private", id.scope() == FrequencyId.Scope.PRIVATE);
-            FrequencySavedData frequencyData = FrequencySavedData.get(player.serverLevel());
+            FrequencySavedData data = FrequencySavedData.get(player.serverLevel());
             if (!id.accessibleBy(player.getUUID())) state.putString("Error", "Private frequency: access denied");
-            else if (!frequencyData.exists(id)) state.putString("Error", "Frequency no longer exists. This Buffer must be reset.");
+            else if (!data.exists(id)) state.putString("Error", "Frequency no longer exists. This Buffer must be reset.");
             else {
-                var network = frequencyData.activateBuffer(id,physicalTier);
+                var network = data.activateBuffer(id,physicalTier);
                 if (network.tier().ordinal() > physicalTier.ordinal())
                     state.putString("Error", "This Buffer cannot display the contents of " + id.displayNumber() + " due to tier incompatibility.");
                 else {
@@ -318,25 +318,25 @@ public final class ConfigNetworking {
                 case "face" -> {
                     Direction dir = Direction.values()[req.slot];
                     TransferPortBlockEntity.FaceMode mode = TransferPortBlockEntity.FaceMode.valueOf(req.value);
-                    if (!port.setMode(dir, mode, actor)) message = "Input/output overlap. Configure disjoint filters first.";
+                    if (!port.setMode(dir, mode, actor)) message = "Cannot configure this Port face.";
                 }
                 case "stack" -> { if (!port.setStackMode(req.value.equals("true"), actor)) message = "Access denied"; }
                 case "rule" -> {
                     String[] parts = req.value.split("\\|", 2);
                     if (parts.length != 2 || !port.setFilterRule(parts[0].equals("input"), req.slot, parts[1], actor))
-                        message = "Invalid item/tag or input/output filter overlap.";
+                        message = "Invalid item ID, tag, or filter slot.";
                 }
                 case "apply_card" -> {
                     ItemStack card = player.getOffhandItem();
                     if (!(card.getItem() instanceof TagCardItem)) card = player.getMainHandItem();
                     String tag = TagCardItem.tag(card);
                     if (tag.isEmpty() || !port.setFilterRule(req.value.equals("input"), req.slot, "#"+tag, actor))
-                        message = "Hold a configured Tag Card (offhand recommended), or check filter overlap.";
+                        message = "Hold a configured Tag Card (offhand recommended).";
                 }
                 case "filter_mode" -> {
                     String[] parts = req.value.split(":", 2);
                     if (parts.length != 2 || !port.setFilterWhitelist(parts[0].equals("input"), parts[1].equals("white"), actor))
-                        message = "Cannot permit the same item in both directions.";
+                        message = "Invalid filter setting or access denied.";
                 }
                 default -> message = "Unknown configuration action";
             }
