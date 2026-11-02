@@ -5,8 +5,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
 
 /** Scrollable nine-column frequency storage above the usual player inventory.
  * Tier I–III have no scrolling; IV–V use a mouse wheel and draggable scrollbar.
@@ -14,22 +15,27 @@ import net.minecraft.world.inventory.Slot;
 public final class BufferScreen extends AbstractContainerScreen<BufferMenu> {
     private Button sortButton;
     private boolean draggingScrollbar;
-    private static final int STORAGE_Y = 48;
-    private static final int SCROLLBAR_X = 177;
+    // Use the exact vanilla 9-column chest panel, not a homemade inventory skin.
+    private static final ResourceLocation CHEST_TEXTURE =
+        ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png");
+    private static final int STORAGE_Y = 18;
+    private static final int SCROLLBAR_X = 181;
     private static final int SCROLLBAR_WIDTH = 8;
 
     public BufferScreen(BufferMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title);
-        imageWidth = menu.supportsScrolling() ? 194 : 176;
-        imageHeight = menu.inventoryY() + 84;
-        inventoryLabelY = menu.inventoryY() - 11;
-        titleLabelY = 8;
+        // Vanilla ChestMenu geometry: variable chest rows followed by normal
+        // inventory and hotbar. Extra 18px at right holds sorting/scrolling only.
+        imageWidth = 194;
+        imageHeight = 114 + menu.visibleRows() * 18;
+        inventoryLabelY = menu.visibleRows() * 18 + 20;
+        titleLabelY = 6;
     }
 
     @Override protected void init() {
         super.init();
-        sortButton = addRenderableWidget(Button.builder(Component.literal("Sort"), b -> choose(BufferMenu.SORT_BUTTON))
-            .bounds(leftPos + imageWidth - 54, topPos + 23, 45, 18).build());
+        sortButton = addRenderableWidget(Button.builder(Component.literal("S"), b -> choose(BufferMenu.SORT_BUTTON))
+            .bounds(leftPos + 178, topPos + 5, 14, 16).build());
     }
 
     private void choose(int choice) {
@@ -94,40 +100,29 @@ public final class BufferScreen extends AbstractContainerScreen<BufferMenu> {
     }
 
     @Override protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
-        graphics.fill(0, 0, width, height, 0x8A000000);
-        graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFFCBC6BA);
-        graphics.fill(leftPos + 3, topPos + 3, leftPos + imageWidth - 3, topPos + imageHeight - 3, 0xFFE4DED0);
-        graphics.fill(leftPos + 6, topPos + STORAGE_Y - 3,
-            leftPos + 170, topPos + STORAGE_Y + menu.visibleRows() * 18 + 3, 0xFFB3AC9D);
-        for (int i = 0; i < menu.visibleInView(); i++) {
-            int x = leftPos + 8 + (i % 9) * 18;
-            int y = topPos + STORAGE_Y + (i / 9) * 18;
-            graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF665E54);
-            graphics.fill(x, y, x + 16, y + 16, 0xFF8A8379);
-        }
-        for (int i = menu.viewSlots(); i < menu.slots.size(); i++) {
-            Slot slot = menu.slots.get(i);
-            int x = leftPos + slot.x, y = topPos + slot.y;
-            graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF6B645B);
-            graphics.fill(x, y, x + 16, y + 16, 0xFF918B80);
-        }
+        // Standard Minecraft generic chest texture; rows resize exactly like a
+        // vanilla chest, with the unmodified player inventory panel beneath it.
+        int topHeight = menu.visibleRows() * 18 + 17;
+        graphics.blit(CHEST_TEXTURE, leftPos, topPos, 0, 0, 176, topHeight);
+        graphics.blit(CHEST_TEXTURE, leftPos, topPos + topHeight, 0, 126, 176, 96);
+
+        // Narrow controls strip *outside* Minecraft's normal inventory panel.
+        int x = leftPos + 176;
+        graphics.fill(x, topPos, x + 18, topPos + imageHeight, 0xFF8B8B8B);
+        graphics.fill(x + 1, topPos + 1, x + 17, topPos + imageHeight - 1, 0xFFC6C6C6);
         if (menu.canScroll()) {
-            int x = leftPos + SCROLLBAR_X;
-            graphics.fill(x, barTop(), x + SCROLLBAR_WIDTH, barTop() + barHeight(), 0xFF746F64);
-            graphics.fill(x + 1, thumbTop(), x + SCROLLBAR_WIDTH - 1, thumbTop() + thumbHeight(), 0xFFDDD7C9);
+            int trackX = leftPos + SCROLLBAR_X;
+            graphics.fill(trackX, barTop(), trackX + SCROLLBAR_WIDTH,
+                barTop() + barHeight(), 0xFF555555);
+            graphics.fill(trackX + 1, thumbTop(), trackX + SCROLLBAR_WIDTH - 1,
+                thumbTop() + thumbHeight(), 0xFFE9E9E9);
         }
     }
 
     @Override protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 8, 8, 0x3F3F3F, false);
-        graphics.drawString(font, playerInventoryTitle, 8, inventoryLabelY, 0x404040, false);
-        String sortText = switch (menu.sortMode()) {
-            case QUANTITY_ASC -> "Quantity: low to high";
-            case QUANTITY_DESC -> "Quantity: high to low";
-            case ALPHABETICAL -> "Alphabetical";
-            case MOD_ALPHABETICAL -> "By mod";
-        };
-        graphics.drawString(font, sortText, 8, 28, 0x404040, false);
+        // Exactly the same two labels as a vanilla chest screen.
+        super.renderLabels(graphics, mouseX, mouseY);
+        // Only stored *long* counts are custom. Player inventory renders untouched.
         for (int i = 0; i < menu.visibleInView(); i++) {
             long amount = menu.count(i);
             if (amount <= 0) continue;
@@ -145,7 +140,18 @@ public final class BufferScreen extends AbstractContainerScreen<BufferMenu> {
         return amount / 1_000_000_000 + "B";
     }
 
+    private String sortDescription() {
+        return switch (menu.sortMode()) {
+            case QUANTITY_ASC -> "Quantity: low to high";
+            case QUANTITY_DESC -> "Quantity: high to low";
+            case ALPHABETICAL -> "Alphabetical";
+            case MOD_ALPHABETICAL -> "By mod";
+        };
+    }
+
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
+        renderBackground(graphics, mouseX, mouseY, partial);
+        sortButton.setTooltip(Tooltip.create(Component.literal("Sorting: " + sortDescription() + " (click to cycle)")));
         super.render(graphics, mouseX, mouseY, partial);
         renderTooltip(graphics, mouseX, mouseY);
     }

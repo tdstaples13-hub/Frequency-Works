@@ -8,7 +8,6 @@ import dev.frequencyworks.world.FrequencySavedData;
 import dev.frequencyworks.world.FrequencySavedData.StoredFrequency;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -73,11 +72,16 @@ public final class BufferMenu extends AbstractContainerMenu {
         for (int i = 0; i < viewSlots; i++) {
             final int cell = i;
             // Never allow an out-of-capacity cell to be used for deposits.
-            addSlot(new Slot(projection, i, 8 + (i % COLUMNS) * 18, 48 + (i / COLUMNS) * 18) {
+            addSlot(new Slot(projection, i, 8 + (i % COLUMNS) * 18, 18 + (i / COLUMNS) * 18) {
                 @Override public boolean isActive() { return cell < visibleInView(); }
+                // These stacks are *displays*, not real vanilla-sized inventory stacks.
+                // The server handles frequency deposits/withdrawals in clicked().
+                @Override public boolean mayPlace(ItemStack stack) { return false; }
+                @Override public boolean mayPickup(Player player) { return false; }
             });
         }
-        // Keep vanilla player slots aligned directly below the actual grid.
+        // Exact vanilla ChestMenu layout: 3x9 inventory, 9-slot hotbar, 4px gap.
+        // None of these slots are virtual; they retain vanilla click behavior.
         final int inventoryY = inventoryY();
         for (int r = 0; r < 3; r++) for (int c = 0; c < 9; c++)
             addSlot(new Slot(inventory, 9 + r * 9 + c, 8 + c * 18, inventoryY + r * 18));
@@ -95,7 +99,7 @@ public final class BufferMenu extends AbstractContainerMenu {
     public int viewSlots() { return viewSlots; }
     public boolean supportsScrolling() { return physicalTier >= 4; }
     public int visibleRows() { return visibleRows; }
-    public int inventoryY() { return 66 + visibleRows * 18; }
+    public int inventoryY() { return 31 + visibleRows * 18; }
     public int maxScrollRow() { return Math.max(0, (capacity - viewSlots + COLUMNS - 1) / COLUMNS); }
     public boolean canScroll() { return maxScrollRow() > 0; }
     public int visibleInView() { return Math.max(0, Math.min(viewSlots, capacity - scrollRow * COLUMNS)); }
@@ -208,8 +212,23 @@ public final class BufferMenu extends AbstractContainerMenu {
             broadcastChanges();
             return;
         }
-        if (click == ClickType.PICKUP_ALL) return; // cannot mass-copy phantom projection cells
+        // Let Minecraft handle ALL clicks outside the virtual frequency grid.
+        // This includes player-inventory pickup, hotbar swapping, drop, shift-click,
+        // double-click collection, offhand swapping and drag distribution.
+        // canTakeItemForPickAll/canDragTo exclude virtual network slots.
         super.clicked(slotId, mouseButton, click, player);
+    }
+
+    /** Drag distribution must never enter long-count virtual storage cells.
+     * Vanilla drag handling is preserved for all player inventory and hotbar slots. */
+    @Override public boolean canDragTo(Slot slot) {
+        return slot.container != projection && super.canDragTo(slot);
+    }
+
+    /** Double-click collection should work normally in the player's inventory,
+     * but may not sweep items out of the virtual storage projection. */
+    @Override public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) {
+        return slot.container != projection && super.canTakeItemForPickAll(stack, slot);
     }
 
     /** Inserts into player's normal inventory, returns remainder (can be empty). */
