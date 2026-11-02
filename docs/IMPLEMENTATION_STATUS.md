@@ -23,3 +23,5 @@ Run the Java 21 NeoForge GitHub Action, fix any compiler errors, then test in a 
 
 - Placed Transfer Buffers now expose a standard NeoForge item handler for automation, including Sequencer Host usage.
 - Sequencers cache idle programs and Redstone Card supports configured thresholds 1–15.
+
+- A6B UI revision planned: compact 1×9 Tablet selectors, 1×9 ghost filters, 1×9 per-step whitelist/blacklist toggles; native player inventory below. Quantity arrows appear only on ordinary item ghosts; Shift changes 10 at a time. All screen panels explicitly render before widgets/slots.

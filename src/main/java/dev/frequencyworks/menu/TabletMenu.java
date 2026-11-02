@@ -13,7 +13,7 @@ import net.minecraft.world.item.ItemStack;
 
 /** Tablet editor: real player slots, nine virtual instruction ghosts on screen. */
 public final class TabletMenu extends AbstractContainerMenu {
-    public static final int INVENTORY_Y=202;
+    public static final int INVENTORY_Y=126;
     private final Inventory inventory;
     private final int hand;
     private CompoundTag state=new CompoundTag();
@@ -23,9 +23,9 @@ public final class TabletMenu extends AbstractContainerMenu {
         this.inventory=inv;
         this.hand=hand;
         for(int r=0;r<3;r++)for(int c=0;c<9;c++)
-            addSlot(new Slot(inv,9+r*9+c,25+c*18,INVENTORY_Y+r*18));
+            addSlot(new Slot(inv,9+r*9+c,8+c*18,INVENTORY_Y+r*18));
         for(int c=0;c<9;c++)
-            addSlot(new Slot(inv,c,25+c*18,INVENTORY_Y+58));
+            addSlot(new Slot(inv,c,8+c*18,INVENTORY_Y+58));
     }
     public int hand(){return hand;}
     public CompoundTag state(){return state;}

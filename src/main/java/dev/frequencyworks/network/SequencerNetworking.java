@@ -96,6 +96,7 @@ public final class SequencerNetworking {
                     }
                 }
                 case "clear" -> next=SequencerProgram.clearItem(s);
+                case "option" -> next=SequencerProgram.nextFaceOption(held,s);
                 case "link" -> {
                     int size=SequencerProgram.links(held).size();
                     int index=s.link()+1;

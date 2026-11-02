@@ -161,6 +161,28 @@ public final class SequencerProgram {
         return new Step(before.link(),before.receive(),before.amount(),before.blacklist(),
                 ItemStack.EMPTY,"","",before.gate());
     }
+    /** Cycle valid face/direction pairs. A Both face contributes two choices,
+     * one Host-to-target and another target-to-Host. None is a separate choice.
+     */
+    public static Step nextFaceOption(ItemStack tablet,Step current) {
+        List<Link> links=links(tablet);
+        List<int[]> options=new ArrayList<>();
+        options.add(new int[]{-1,0});
+        for(int i=0;i<links.size();i++){
+            Link link=links.get(i);
+            if(link.permits(false))options.add(new int[]{i,0});
+            if(link.permits(true))options.add(new int[]{i,1});
+        }
+        int index=0;
+        for(int i=0;i<options.size();i++){
+            int[] option=options.get(i);
+            if(option[0]==current.link() && (option[1]==1)==current.receive()){
+                index=i;break;
+            }
+        }
+        int[] next=options.get((index+1)%options.size());
+        return withReceive(withLink(current,next[0]),next[1]==1);
+    }
     public static Step withLink(Step s,int link) {
         return new Step(link,s.receive(),s.amount(),s.blacklist(),s.item(),s.tag(),s.card(),s.gate());
     }
