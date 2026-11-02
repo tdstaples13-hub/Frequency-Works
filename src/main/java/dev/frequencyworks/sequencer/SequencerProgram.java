@@ -149,12 +149,12 @@ public final class SequencerProgram {
     public static Step withItem(Step before,ItemStack cursor) {
         if (cursor.getItem() instanceof TagCardItem) {
             String tag=TagCardItem.tag(cursor);
-            return new Step(before.link(),before.receive(),before.amount(),before.blacklist(),
+            return new Step(before.link(),before.receive(),1,before.blacklist(),
                     ItemStack.EMPTY,tag,"",before.gate());
         }
         String card=cursor.getItem()==dev.frequencyworks.registration.ModContent.REDSTONE_CARD.get()?"redstone":
                 cursor.getItem()==dev.frequencyworks.registration.ModContent.INTERACTION_CARD.get()?"interaction":"";
-        return new Step(before.link(),before.receive(),before.amount(),before.blacklist(),
+        return new Step(before.link(),before.receive(),card.isEmpty()?before.amount():1,before.blacklist(),
                 card.isEmpty()?cursor.copyWithCount(1):ItemStack.EMPTY,"",card,before.gate());
     }
     public static Step clearItem(Step before) {

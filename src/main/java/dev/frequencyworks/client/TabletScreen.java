@@ -15,13 +15,14 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-/** The compact three-row programming panel agreed for Sequence Tablets.
+/** Compact Sequence Tablet editor.
  *
- * Yellow: 9 independent linked-face and direction selectors.
- * Dark:   9 ghost item / Tag Card / control-card instructions.
- * Purple: 9 independent whitelist/blacklist selectors.
+ * Top:    nine independent face/direction cycle controls.
+ * Middle: nine ghost matcher/card instruction slots (not inventories).
+ * Bottom: nine independent whitelist/blacklist toggles.
  *
- * No control row stores real items. The inventory below is vanilla.
+ * Square colors in the original design diagram only identified control kinds.
+ * Use restrained vanilla-style gray widgets, not those literal diagram colors.
  */
 public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
     private static final ResourceLocation CHEST =
@@ -119,17 +120,24 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         for(int i=0;i<9;i++){
             int x=leftPos+FIRST_X+i*SPACING;
             int y=topPos+OPTION_Y;
-            // Yellow selectors cycle each step through its configured faces.
-            square(g,x,y,0xFFA8841B,0xFFFFD75A);
+            // All three rows share Minecraft's neutral inventory palette.
+            // The first and third rows are controls; the middle row is a ghost
+            // slot, with a light selection rim rather than a colored fill.
+            square(g,x,y,0xFF454545,0xFFB6B6B6);
             y=topPos+GHOST_Y;
-            square(g,x,y,0xFF363636,i==selected?0xFFAFAFAF:0xFF777777);
+            square(g,x,y,i==selected?0xFFE5E5E5:0xFF454545,0xFF888888);
             y=topPos+FILTER_Y;
-            square(g,x,y,0xFF563363,0xFFA57BB5);
+            square(g,x,y,0xFF454545,0xFFB6B6B6);
         }
     }
     private static void square(GuiGraphics g,int x,int y,int rim,int interior){
         g.fill(x,y,x+18,y+18,rim);
         g.fill(x+1,y+1,x+17,y+17,interior);
+    }
+    // No default blurred backdrop. Always draw a darkened world first, then
+    // a fully opaque panel and the genuine vanilla player inventory texture.
+    @Override public void renderBackground(GuiGraphics graphics,int mx,int my,float partial){
+        graphics.fill(0,0,width,height,0x88000000);
     }
     @Override protected void renderBg(GuiGraphics graphics,float partial,int mx,int my){
         // Deliberately empty. drawPanel() runs before super.render().
@@ -190,10 +198,10 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
             int index=s.contains("Link")?s.getInt("Link"):-1;
             String icon=index>=0 && index<links.size()
                     ?s.getBoolean("Receive")?"<":">":"-";
-            g.drawCenteredString(font,icon,x+9,topPos+OPTION_Y+5,0x392A0E);
+            g.drawCenteredString(font,icon,x+9,topPos+OPTION_Y+5,0xFF303030);
             drawItem(g,s,x,topPos+GHOST_Y);
             g.drawCenteredString(font,s.getBoolean("Blacklist")?"B":"W",
-                    x+9,topPos+FILTER_Y+5,0xF8EDFF);
+                    x+9,topPos+FILTER_Y+5,0xFF303030);
         }
     }
     @Override public boolean mouseClicked(double mx,double my,int button){

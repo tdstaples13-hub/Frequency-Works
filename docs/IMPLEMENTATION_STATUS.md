@@ -25,3 +25,5 @@ Run the Java 21 NeoForge GitHub Action, fix any compiler errors, then test in a 
 - Sequencers cache idle programs and Redstone Card supports configured thresholds 1–15.
 
 - A6B UI revision planned: compact 1×9 Tablet selectors, 1×9 ghost filters, 1×9 per-step whitelist/blacklist toggles; native player inventory below. Quantity arrows appear only on ordinary item ghosts; Shift changes 10 at a time. All screen panels explicitly render before widgets/slots.
+
+- Alpha A6B UI refinement: user-provided colored squares were a layout legend, not a visual palette. All Tablet controls now use neutral Minecraft-style grays. Removed inherited world blur from Tablet and Sequencer screens; cards reset their hidden count to 1 and never display quantity arrows.

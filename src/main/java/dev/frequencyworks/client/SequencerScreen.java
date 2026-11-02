@@ -35,6 +35,9 @@ public final class SequencerScreen extends AbstractContainerScreen<SequencerMenu
         g.fill(leftPos+176,topPos,leftPos+imageWidth,topPos+imageHeight,0xFF777777);
         g.fill(leftPos+177,topPos+1,leftPos+imageWidth-1,topPos+imageHeight-1,0xFFC6C6C6);
     }
+    @Override public void renderBackground(GuiGraphics g,int mx,int my,float partial){
+        g.fill(0,0,width,height,0x88000000);
+    }
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         // All panels are explicitly drawn before super.render(), not here.
     }
