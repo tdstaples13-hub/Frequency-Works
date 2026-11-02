@@ -154,8 +154,11 @@ public final class SequencerProgram {
         }
         String card=cursor.getItem()==dev.frequencyworks.registration.ModContent.REDSTONE_CARD.get()?"redstone":
                 cursor.getItem()==dev.frequencyworks.registration.ModContent.INTERACTION_CARD.get()?"interaction":"";
+        // Reset action mode when a different control-card kind replaces the
+        // previous one; otherwise a Redstone threshold might become an action.
+        int setting=card.isEmpty()?before.gate():card.equals(before.card())?before.gate():0;
         return new Step(before.link(),before.receive(),card.isEmpty()?before.amount():1,before.blacklist(),
-                card.isEmpty()?cursor.copyWithCount(1):ItemStack.EMPTY,"",card,before.gate());
+                card.isEmpty()?cursor.copyWithCount(1):ItemStack.EMPTY,"",card,setting);
     }
     public static Step clearItem(Step before) {
         return new Step(before.link(),before.receive(),before.amount(),before.blacklist(),
@@ -182,6 +185,20 @@ public final class SequencerProgram {
         }
         int[] next=options.get((index+1)%options.size());
         return withReceive(withLink(current,next[0]),next[1]==1);
+    }
+    /** Interaction Cards are target-face actions, not item transfers.
+     * Every linked face is a valid interaction target regardless of its
+     * import/export transfer role. Cycle includes an explicit None choice.
+     */
+    public static Step nextInteractionTarget(ItemStack tablet,Step current) {
+        int size=links(tablet).size();
+        int next=current.link()+1;
+        if(next>=size)next=-1;
+        return withLink(current,next);
+    }
+    /** Right-click, sneak-right-click, punch, mine. */
+    public static Step nextInteractionAction(Step current) {
+        return withGate(current,(Math.floorMod(current.gate(),4)+1)%4);
     }
     public static Step withLink(Step s,int link) {
         return new Step(link,s.receive(),s.amount(),s.blacklist(),s.item(),s.tag(),s.card(),s.gate());

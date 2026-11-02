@@ -41,6 +41,9 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     private boolean stopped;
     private boolean edgeInitialized, rising, falling;
     private int lastPower;
+    // One fake-player action at most every 10 game ticks, even when a single
+    // instruction program automatically wraps back to its first step.
+    private long nextInteractionAt;
     private String status="Ready";
     private Boolean hasProgramCache;
 
@@ -102,6 +105,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
         tag.putBoolean("EdgeInitialized",edgeInitialized);
         tag.putInt("LastPower",lastPower);
         tag.putBoolean("Rising",rising);tag.putBoolean("Falling",falling);
+        tag.putLong("NextInteractionAt",nextInteractionAt);
     }
     @Override protected void loadAdditional(CompoundTag tag,HolderLookup.Provider registries){
         super.loadAdditional(tag,registries);
@@ -126,6 +130,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
         hasProgramCache=null;
         edgeInitialized=tag.getBoolean("EdgeInitialized");lastPower=tag.getInt("LastPower");
         rising=tag.getBoolean("Rising");falling=tag.getBoolean("Falling");
+        nextInteractionAt=tag.getLong("NextInteractionAt");
     }
 
     /** Client packets need only these three runtime counters, not inventory data. */
@@ -220,7 +225,19 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
                 advance();continue;
             }
             if(step.interaction()){
-                if(!failure(tablet,"Interaction Card not implemented"))return;
+                if(server.getGameTime()<nextInteractionAt) {
+                    status="Waiting for interaction cooldown";
+                    return;
+                }
+                var result=dev.frequencyworks.sequencer.SequencerInteractionService.perform(
+                        server,link,step.gate());
+                if(result!=dev.frequencyworks.sequencer.SequencerInteractionService.Outcome.SUCCESS){
+                    if(!failure(tablet,"Interaction blocked or rejected"))return;
+                    continue;
+                }
+                nextInteractionAt=server.getGameTime()+10;
+                status="Interaction executed";
+                advance();
                 continue;
             }
             if(!link.permits(step.receive())){

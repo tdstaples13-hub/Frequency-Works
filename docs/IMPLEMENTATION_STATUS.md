@@ -29,3 +29,5 @@ Run the Java 21 NeoForge GitHub Action, fix any compiler errors, then test in a 
 - Alpha A6B UI refinement: user-provided colored squares were a layout legend, not a visual palette. All Tablet controls now use neutral Minecraft-style grays. Removed inherited world blur from Tablet and Sequencer screens; cards reset their hidden count to 1 and never display quantity arrows.
 
 - Alpha A6D: remove the always-visible resume arrow and extra gray right sidebar from the nine-Tablet Sequencer inventory. Standard panel is 176 pixels wide. To resume a genuinely stopped Sequencer, sneak-right-click its block with an empty hand; regular right-click still opens the inventory. No permanent UI control is shown.
+
+- Alpha A6E: Interaction Card top-row button cycles Right-click / Sneak-right-click / Punch / Mine; the bottom control selects the target face independently of an item's import/export filter mode. Action mode is saved in the Tablet's existing per-step Gate field. Interaction server execution and protection checks are under validation.

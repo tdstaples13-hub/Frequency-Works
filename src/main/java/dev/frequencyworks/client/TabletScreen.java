@@ -60,6 +60,25 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         // never Item. Only actual item matching has quantity arrows.
         return step.contains("Item",Tag.TAG_COMPOUND);
     }
+    private static boolean interaction(CompoundTag step){
+        return "interaction".equals(step.getString("Card"));
+    }
+    private static String interactionAction(CompoundTag step){
+        return switch(Math.floorMod(step.getInt("Gate"),4)){
+            case 0->"Right-click";
+            case 1->"Sneak-right-click";
+            case 2->"Punch";
+            default->"Mine";
+        };
+    }
+    private static String actionSymbol(CompoundTag step){
+        return switch(Math.floorMod(step.getInt("Gate"),4)){
+            case 0->"R";
+            case 1->"S";
+            case 2->"P";
+            default->"M";
+        };
+    }
     private static boolean occupied(CompoundTag s){
         return ordinaryItem(s)||!s.getString("Tag").isEmpty()||!s.getString("Card").isEmpty();
     }
@@ -74,6 +93,17 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         return (s.getBoolean("Receive")?"Receive: target to Host":"Send: Host to target")
             +" | "+link.getString("Dimension")+" "+pos.getX()+","+pos.getY()+","+pos.getZ()
             +" "+direction.getName();
+    }
+
+    private String interactionTargetText(CompoundTag s){
+        int index=s.contains("Link")?s.getInt("Link"):-1;
+        ListTag links=menu.state().getList("Links",Tag.TAG_COMPOUND);
+        if(index<0||index>=links.size())return "Target: none; click to cycle linked faces";
+        CompoundTag link=links.getCompound(index);
+        var pos=net.minecraft.core.BlockPos.of(link.getLong("Pos"));
+        var face=net.minecraft.core.Direction.values()[Math.floorMod(link.getInt("Face"),6)];
+        return "Target: "+link.getString("Dimension")+" "+
+                pos.getX()+","+pos.getY()+","+pos.getZ()+" "+face.getName();
     }
 
     private Button footer(int x,int w,String label,String tip,Runnable action){
@@ -196,11 +226,18 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
             CompoundTag s=step(i);
             int x=leftPos+FIRST_X+i*SPACING;
             int index=s.contains("Link")?s.getInt("Link"):-1;
-            String icon=index>=0 && index<links.size()
-                    ?s.getBoolean("Receive")?"<":">":"-";
+            String icon=interaction(s)?actionSymbol(s):
+                    index>=0 && index<links.size()
+                        ?s.getBoolean("Receive")?"<":">":"-";
             g.drawCenteredString(font,icon,x+9,topPos+OPTION_Y+5,0xFF303030);
             drawItem(g,s,x,topPos+GHOST_Y);
-            g.drawCenteredString(font,s.getBoolean("Blacklist")?"B":"W",
+            String lower=interaction(s)?
+                    index>=0 && index<links.size()?
+                        net.minecraft.core.Direction.values()[
+                            Math.floorMod(links.getCompound(index).getInt("Face"),6)
+                        ].getName().substring(0,1).toUpperCase(java.util.Locale.ROOT):"-":
+                    s.getBoolean("Blacklist")?"B":"W";
+            g.drawCenteredString(font,lower,
                     x+9,topPos+FILTER_Y+5,0xFF303030);
         }
     }
@@ -237,7 +274,7 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
                     }
                     if(y>=FILTER_Y && y<FILTER_Y+18){
                         selected=column;
-                        if(button==0)send("blacklist",column,0);
+                        if(button==0)send(interaction(step(column))?"interaction_target":"blacklist",column,0);
                         rebuildWidgets();
                         return true;
                     }
@@ -256,11 +293,15 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         CompoundTag s=step(col);
         String description;
         if(y>=OPTION_Y && y<OPTION_Y+18){
-            description="Step "+(col+1)+": "+faceText(s)+" | click to cycle";
+            description=interaction(s)?
+                    "Step "+(col+1)+" action: "+interactionAction(s)+" | click to cycle":
+                    "Step "+(col+1)+": "+faceText(s)+" | click to cycle";
         }else if(y>=GHOST_Y && y<GHOST_Y+18){
             description=ghostTooltip(col,s);
         }else if(y>=FILTER_Y && y<FILTER_Y+18){
-            description="Step "+(col+1)+": "+(s.getBoolean("Blacklist")?"Blacklist: exclude matching items":"Whitelist: require matching items");
+            description=interaction(s)?
+                    "Step "+(col+1)+": "+interactionTargetText(s):
+                    "Step "+(col+1)+": "+(s.getBoolean("Blacklist")?"Blacklist: exclude matching items":"Whitelist: require matching items");
         }else return;
         g.renderTooltip(font,Component.literal(description),mx,my);
     }

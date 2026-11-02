@@ -96,7 +96,13 @@ public final class SequencerNetworking {
                     }
                 }
                 case "clear" -> next=SequencerProgram.clearItem(s);
-                case "option" -> next=SequencerProgram.nextFaceOption(held,s);
+                case "option" -> next=s.interaction()
+                        ?SequencerProgram.nextInteractionAction(s)
+                        :SequencerProgram.nextFaceOption(held,s);
+                case "interaction_target" -> {
+                    if(!s.interaction())return;
+                    next=SequencerProgram.nextInteractionTarget(held,s);
+                }
                 case "link" -> {
                     int size=SequencerProgram.links(held).size();
                     int index=s.link()+1;
@@ -105,7 +111,10 @@ public final class SequencerNetworking {
                 }
                 case "direction" -> next=SequencerProgram.withReceive(s,!s.receive());
                 case "amount" -> next=SequencerProgram.withAmount(s,Math.max(1,Math.min(4096,s.amount()+req.value())));
-                case "blacklist" -> next=SequencerProgram.withBlacklist(s,!s.blacklist());
+                case "blacklist" -> {
+                    if(s.interaction() || s.redstone())return;
+                    next=SequencerProgram.withBlacklist(s,!s.blacklist());
+                }
                 case "gate" -> next=SequencerProgram.withGate(s,(s.gate()+1)%19);
                 default -> {return;}
             }
