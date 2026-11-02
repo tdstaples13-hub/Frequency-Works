@@ -104,6 +104,7 @@ public final class ConfigNetworking {
             if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
                 dev.frequencyworks.client.ConfigClient.receivePortState(payload);
         });
+        SequencerNetworking.register(registrar);
     }
 
     /** Invoked on client only; keeps client-only Minecraft classes out of common classes. */

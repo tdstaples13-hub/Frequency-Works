@@ -1,19 +1,22 @@
-# Frequency Works — implementation status (Alpha A5H)
+# Frequency Works — implementation status (Alpha A6A)
 
-## Implemented for testing
+## Implemented for integration testing
 
-- Five shared-frequency Transfer Buffer tiers, vanilla player inventory, long item quantities, scrolling and sorting.
-- Five Transfer Port tiers with a Powah-style six-face selector; independent, simultaneous Import/Export ghost filters with per-tier 3/6/9/12/15 slots per bank; full native player inventory below.
-- Server-validated ghost item selection (cursor item or Tag Card), whitelist/blacklist toggles, transfer-rate toggle, and existing Port automation.
-- Operator debugger, shared frequency persistence and generation invalidation.
-- Full NeoForge compilation is required before any jar is offered.
+- Five shared-frequency Transfer Buffer tiers and five Transfer Port tiers, with the existing A5H interfaces.
+- Item Sequencer: a compact block with exactly nine actual Tablet slots, server-authoritative 2-tick instruction processing, a directly-underneath Host inventory, 16-block linked-face range, two-way transfer, partial counts and persisted progress.
+- Sequence Tablet: nine ghost instruction cells with selected item or configured Tag Card; link faces by shift-right-click, cycle send/receive, counts (1–4096), whitelist/blacklist, and tablet failure policies.
+- Redstone Card instructions: powered, unpowered, rising, falling edge gates.
+- Save/reload runtime progress, emergency refund preservation, tablet drops on block break, and a manual resume button for Stop-on-failure.
+- Legacy Buffer, Port, debugger, frequencies and crafting recipes retained.
 
-## Incomplete / next alpha
+## Not yet implemented
 
-- **Next alpha priority:** Item Sequencer execution, Sequence Tablet programming, and instruction processing; Interaction and Redstone Cards.
-- Frequency Monitor UI/functionality; final models, compatibility testing and crafting edge cases.
-- In-game verification of Port ghost filters, direction handling, server synchronization and item counts.
+- Interaction Card fake-player use/sneak-use/left-click semantics. Card can be placed as a step, but intentionally fails safely rather than taking unintended actions.
+- Per-face client outline/highlights while linking tablets.
+- JEI/EMI ingredient drag-and-drop integration; ghost steps currently use normal cursor selection.
+- More complex UI controls such as threshold 1–15 for Redstone Card; current A6A handles four boolean/edge modes.
+- End-to-end client playtest and real modded-machine compatibility; GitHub compilation alone is not gameplay verification.
 
-See `docs/ALPHA_A5G_PORT_GUI.md` for Port UI/filter migration and `docs/ALPHA_A5H_PORT_GUI.md` for visual bugfix details.
+## Next
 
-- A5H moved the Port 1/64 transfer toggle below the side selector and corrected the explicit GUI background draw order. Gameplay verification remains pending.
+Run the Java 21 NeoForge GitHub Action, fix any compiler errors, then test in a disposable ATM10 world. Do not promote this dev branch to main until gameplay is verified.

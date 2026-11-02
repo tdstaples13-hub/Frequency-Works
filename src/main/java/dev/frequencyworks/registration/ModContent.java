@@ -16,6 +16,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.inventory.MenuType;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import dev.frequencyworks.menu.BufferMenu;
+import dev.frequencyworks.menu.SequencerMenu;
+import dev.frequencyworks.menu.TabletMenu;
+import dev.frequencyworks.block.ItemSequencerBlock;
+import dev.frequencyworks.blockentity.SequencerBlockEntity;
+import dev.frequencyworks.item.SequenceTabletItem;
 import dev.frequencyworks.menu.PortMenu;
 import dev.frequencyworks.item.FrequencyDebuggerItem;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -35,6 +40,10 @@ public final class ModContent {
             MENUS.register("buffer_menu", () -> IMenuTypeExtension.create(BufferMenu::new));
     public static final DeferredHolder<MenuType<?>, MenuType<PortMenu>> PORT_MENU =
             MENUS.register("port_menu", () -> IMenuTypeExtension.create(PortMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<SequencerMenu>> SEQUENCER_MENU =
+            MENUS.register("sequencer_menu", () -> IMenuTypeExtension.create(SequencerMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<TabletMenu>> TABLET_MENU =
+            MENUS.register("tablet_menu", () -> IMenuTypeExtension.create(TabletMenu::new));
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FrequencyWorks.MOD_ID);
 
@@ -60,8 +69,13 @@ public final class ModContent {
                     TransferPortBlockEntity::new,
                     PORT_1.get(), PORT_2.get(), PORT_3.get(), PORT_4.get(), PORT_5.get()
             ).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SequencerBlockEntity>> SEQUENCER_ENTITY =
+            BLOCK_ENTITIES.register("item_sequencer", () -> BlockEntityType.Builder.of(
+                    SequencerBlockEntity::new, ITEM_SEQUENCER.get()
+            ).build(null));
 
-    public static final DeferredBlock<Block> ITEM_SEQUENCER = simpleBlock("item_sequencer");
+    public static final DeferredBlock<ItemSequencerBlock> ITEM_SEQUENCER =
+            BLOCKS.register("item_sequencer", () -> new ItemSequencerBlock(BlockBehaviour.Properties.of().strength(2.0F)));
     public static final DeferredBlock<Block> FREQUENCY_MONITOR = simpleBlock("frequency_monitor");
 
     public static final DeferredItem<TransferBufferItem> BUFFER_ITEM_1 = bufferItem("transfer_buffer_t1", BUFFER_1, BufferTier.TETHERED);
@@ -78,7 +92,8 @@ public final class ModContent {
     public static final DeferredItem<BlockItem> PORT_ITEM_5 = ITEMS.registerSimpleBlockItem(PORT_5);
     public static final DeferredItem<BlockItem> SEQUENCER_ITEM = ITEMS.registerSimpleBlockItem(ITEM_SEQUENCER);
     public static final DeferredItem<BlockItem> MONITOR_ITEM = ITEMS.registerSimpleBlockItem(FREQUENCY_MONITOR);
-    public static final DeferredItem<Item> SEQUENCE_TABLET = ITEMS.registerSimpleItem("sequence_tablet", new Item.Properties().stacksTo(1));
+    public static final DeferredItem<SequenceTabletItem> SEQUENCE_TABLET = ITEMS.register(
+            "sequence_tablet", () -> new SequenceTabletItem(new Item.Properties()));
     public static final DeferredItem<TagCardItem> TAG_CARD = ITEMS.register("tag_card", () -> new TagCardItem(new Item.Properties()));
     public static final DeferredItem<Item> INTERACTION_CARD = ITEMS.registerSimpleItem("interaction_card", new Item.Properties().stacksTo(1));
     public static final DeferredItem<Item> REDSTONE_CARD = ITEMS.registerSimpleItem("redstone_card", new Item.Properties().stacksTo(1));

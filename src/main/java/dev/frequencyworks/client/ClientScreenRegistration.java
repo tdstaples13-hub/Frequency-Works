@@ -12,5 +12,7 @@ public final class ClientScreenRegistration {
     @SubscribeEvent public static void register(RegisterMenuScreensEvent event) {
         event.register(ModContent.BUFFER_MENU.get(), BufferScreen::new);
         event.register(ModContent.PORT_MENU.get(), PortScreen::new);
+        event.register(ModContent.SEQUENCER_MENU.get(), SequencerScreen::new);
+        event.register(ModContent.TABLET_MENU.get(), TabletScreen::new);
     }
 }

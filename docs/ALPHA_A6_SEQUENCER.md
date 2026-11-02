@@ -1,0 +1,9 @@
+# Alpha A6A: Item Sequencer / programmable Sequence Tablets
+
+The Sequencer is a narrow block that belongs above its Host inventory. Right-click the placed Sequencer for a vanilla chest-style nine-Tablet inventory, then insert programmed Sequence Tablets. Programs run by Tablet slot (1–9) and step (1–9); wrap after the final slot. It has no global Redstone toggle, no frequency binding and no normal item buffer.
+
+To link a target, hold a Sequence Tablet, sneak and right-click the actual face of a block with an item-handler. The clicked (dimension, block position, face) cycles: **Input** (Host -> target), **Output** (target -> Host), **Both**, **off**. Once linked, right-click air holding the Tablet to open its nine-slot programming screen. Select an instruction cell, pick up an ordinary item or programmed Tag Card from the player inventory, then click the ghost cell to set its matcher without consuming the cursor item. Use **Target** to cycle linked targets, **Send/Receive** to pick one direction, and **Count** to request 1–4096 items. Repeat for nine slots. A Redstone Card can be used as a gate, with four signal/edge modes.
+
+The processing loop advances only after exact counts are fulfilled. Missing stock and full destinations are waits, not errors. Invalid face links and unimplemented Interaction Cards apply Tablet's Pause/Continue, Skip or Stop policy. Skip is permitted only when no partial amount has transferred. Stopped Sequencers require clicking the small resume button. Runtime position, remaining item count, and locked item identity are persisted through unloads and restarts. No forced chunk loads or radius scans.
+
+**Important:** A6A is an initial functional alpha, not the complete advanced Sequencer. Fake-player Interaction Card execution, JEI/EMI recipe viewer ghost dragging, face outlines, specified-strength Redstone thresholds and thorough real-world capability tests remain outstanding. Build/test before distributing.
