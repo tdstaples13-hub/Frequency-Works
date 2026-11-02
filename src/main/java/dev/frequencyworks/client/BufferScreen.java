@@ -120,16 +120,28 @@ public final class BufferScreen extends AbstractContainerScreen<BufferMenu> {
     }
 
     @Override protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        // Exactly the same two labels as a vanilla chest screen.
+        // Keep vanilla title and player-inventory labels at their normal depth.
         super.renderLabels(graphics, mouseX, mouseY);
-        // Only stored *long* counts are custom. Player inventory renders untouched.
-        for (int i = 0; i < menu.visibleInView(); i++) {
-            long amount = menu.count(i);
-            if (amount <= 0) continue;
-            String txt = compact(amount);
-            int x = 8 + (i % 9) * 18;
-            int y = STORAGE_Y + (i / 9) * 18;
-            graphics.drawString(font, txt, x + 17 - font.width(txt), y + 9, 0xFFFFFF, true);
+    }
+
+    /** Draw the *real* long item counts after Minecraft draws slot item icons.
+     * Rendering these in renderLabels() puts the quantities behind the icons.
+     * Tooltip rendering still runs afterwards, so hovered-item information wins.
+     */
+    private void renderStorageCounts(GuiGraphics graphics) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0.0F, 0.0F, 250.0F);
+        try {
+            for (int i = 0; i < menu.visibleInView(); i++) {
+                long amount = menu.count(i);
+                if (amount <= 0) continue;
+                String txt = compact(amount);
+                int x = leftPos + 8 + (i % 9) * 18;
+                int y = topPos + STORAGE_Y + (i / 9) * 18;
+                graphics.drawString(font, txt, x + 17 - font.width(txt), y + 9, 0xFFFFFF, true);
+            }
+        } finally {
+            graphics.pose().popPose();
         }
     }
 
@@ -153,6 +165,7 @@ public final class BufferScreen extends AbstractContainerScreen<BufferMenu> {
         renderBackground(graphics, mouseX, mouseY, partial);
         sortButton.setTooltip(Tooltip.create(Component.literal("Sorting: " + sortDescription() + " (click to cycle)")));
         super.render(graphics, mouseX, mouseY, partial);
+        renderStorageCounts(graphics); // above item icons, below item tooltips
         renderTooltip(graphics, mouseX, mouseY);
     }
 }
