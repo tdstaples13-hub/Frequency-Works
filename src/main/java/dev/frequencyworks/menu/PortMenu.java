@@ -15,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
  * Filter rules never become physical item slots or consume the cursor stack.
  */
 public final class PortMenu extends AbstractContainerMenu {
-    public static final int INVENTORY_Y = 188;
+    public static final int INVENTORY_Y = 208;
     private final BlockPos portPos;
     private final int filterCapacity;
     private CompoundTag state = new CompoundTag();

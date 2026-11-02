@@ -23,8 +23,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class PortScreen extends AbstractContainerScreen<PortMenu> {
     private static final ResourceLocation CHEST_TEXTURE =
             ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png");
-    private static final int GRID_Y = 91;
-    private static final int PLAYER_PANEL_Y = 174;
+    // The six-face compass has a compact transfer amount button directly below.
+    // The two filter banks then occupy three rows above a vanilla inventory panel.
+    private static final int GRID_Y = 108;
+    private static final int PLAYER_PANEL_Y = 194;
     // Direction.ordinal(): DOWN, UP, NORTH, SOUTH, WEST, EAST.
     // Three inert grey corners leave exactly six interactive direction buttons.
     private static final int[] FACE_LAYOUT = {-1, 1, -1, 4, 2, 5, -1, 3, 0};
@@ -40,9 +42,9 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
     public PortScreen(PortMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         imageWidth = menu.panelWidth();
-        imageHeight = 270;
+        imageHeight = 294;
         titleLabelY = 7;
-        inventoryLabelY = PLAYER_PANEL_Y + 6;
+        inventoryLabelY = PLAYER_PANEL_Y + 3;
     }
 
     public void refreshState() { rebuildWidgets(); }
@@ -85,10 +87,15 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
                     FACE_NAMES[face] + ": " + MODES[mode] + " (click to cycle)")));
             addRenderableWidget(control);
         }
-        Button transfer = Button.builder(Component.literal(state.getBoolean("Stack") ? "Full stack" : "One item"),
-                b -> send("stack", Boolean.toString(!state.getBoolean("Stack")), 0))
-                .bounds(leftPos + 8, topPos + 46, 103, 18).build();
-        transfer.setTooltip(Tooltip.create(Component.literal("Transfer quantity mode")));
+        // Compact button immediately beneath the directional compass.
+        // The tooltip explains the two transfer modes without a large central control.
+        boolean fullStack = state.getBoolean("Stack");
+        Button transfer = Button.builder(Component.literal(fullStack ? "64" : "1"),
+                b -> send("stack", Boolean.toString(!fullStack), 0))
+                .bounds(leftPos + faceGridX(), topPos + 68, 53, 18).build();
+        transfer.setTooltip(Tooltip.create(Component.literal(fullStack
+                ? "Transfer amount: full stack (click for one item)"
+                : "Transfer amount: one item (click for full stack)")));
         addRenderableWidget(transfer);
 
         for (boolean importing : new boolean[]{true, false}) {
@@ -98,7 +105,7 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
             int center = importing ? imageWidth / 4 : imageWidth * 3 / 4;
             Button toggle = Button.builder(Component.literal(whitelist ? "Whitelist" : "Blacklist"), b ->
                     send("filter_mode", bankWire(bank) + ":" + (whitelist ? "black" : "white"), 0))
-                    .bounds(leftPos + center - 43, topPos + 153, 86, 18).build();
+                    .bounds(leftPos + center - 43, topPos + 169, 86, 18).build();
             toggle.setTooltip(Tooltip.create(Component.literal(
                     (importing ? "Import" : "Export") + ": " + (whitelist ? "allow matching items" : "deny matching items"))));
             addRenderableWidget(toggle);
@@ -110,13 +117,17 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
         g.fill(0, 0, width, height, 0x77000000);
     }
 
-    @Override protected void renderBg(GuiGraphics g, float partial, int mx, int my) {
+    /** Draw panel at the start of render(), before vanilla widgets and slot items.
+     * A5G relied exclusively on renderBg(), which was not executed in the
+     * tested screen path and left the buttons/items floating over the world.
+     */
+    private void renderPanel(GuiGraphics g) {
         g.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF747474);
         g.fill(leftPos + 2, topPos + 2, leftPos + imageWidth - 2,
                 topPos + PLAYER_PANEL_Y - 2, 0xFFC6C6C6);
         // The player's inventory is backed by genuine vanilla Slots, and drawn
         // using the exact vanilla chest texture segment for those slots.
-        g.blit(CHEST_TEXTURE, leftPos + menu.inventoryLeft() - 7, topPos + PLAYER_PANEL_Y,
+        g.blit(CHEST_TEXTURE, leftPos + menu.inventoryLeft() - 8, topPos + PLAYER_PANEL_Y,
                 0, 126, 176, 96);
         int baseX = leftPos + faceGridX();
         int baseY = topPos + 11;
@@ -138,6 +149,10 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
         }
     }
 
+    @Override protected void renderBg(GuiGraphics g, float partial, int mx, int my) {
+        // Background is explicitly drawn in render() so it is always visible.
+    }
+
     @Override protected void renderLabels(GuiGraphics g, int mx, int my) {
         g.drawString(font, title, 8, 6, 0x383838, false);
         CompoundTag state = menu.state();
@@ -146,8 +161,8 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
                     (state.getBoolean("Private") ? " Private" : " Public"), 8, 24, 0x454545, false);
         }
         if (!lastFaceChange.isEmpty()) g.drawString(font, lastFaceChange, 8, 66, 0x453178, false);
-        g.drawCenteredString(font, "IMPORT", imageWidth / 4, 78, 0x276B36);
-        g.drawCenteredString(font, "EXPORT", imageWidth * 3 / 4, 78, 0x9B6318);
+        g.drawCenteredString(font, "IMPORT", imageWidth / 4, 95, 0x276B36);
+        g.drawCenteredString(font, "EXPORT", imageWidth * 3 / 4, 95, 0x9B6318);
         g.drawString(font, playerInventoryTitle, menu.inventoryLeft(), inventoryLabelY, 0x404040, false);
         if (!state.getBoolean("CanConfigure"))
             g.drawString(font, "View only", 8, 51, 0xAA5228, false);
@@ -209,6 +224,7 @@ public final class PortScreen extends AbstractContainerScreen<PortMenu> {
 
     @Override public void render(GuiGraphics graphics, int mx, int my, float partial) {
         renderBackground(graphics, mx, my, partial);
+        renderPanel(graphics); // opaque frame, both filter grids and vanilla inventory
         super.render(graphics, mx, my, partial);
         renderFilterIcons(graphics, mx, my);
         renderTooltip(graphics, mx, my);

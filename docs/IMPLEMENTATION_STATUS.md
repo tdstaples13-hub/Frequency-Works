@@ -1,4 +1,4 @@
-# Frequency Works — implementation status (Alpha A5G)
+# Frequency Works — implementation status (Alpha A5H)
 
 ## Implemented for testing
 
@@ -14,4 +14,6 @@
 - Frequency Monitor UI/functionality; final models, compatibility testing and crafting edge cases.
 - In-game verification of Port ghost filters, direction handling, server synchronization and item counts.
 
-See `docs/ALPHA_A5G_PORT_GUI.md` for Port UI and filter migration behavior.
+See `docs/ALPHA_A5G_PORT_GUI.md` for Port UI/filter migration and `docs/ALPHA_A5H_PORT_GUI.md` for visual bugfix details.
+
+- A5H moved the Port 1/64 transfer toggle below the side selector and corrected the explicit GUI background draw order. Gameplay verification remains pending.
