@@ -10,7 +10,9 @@ import net.neoforged.neoforge.items.IItemHandler;
  */
 public final class PortTransferService {
     private PortTransferService() {}
-    private static final int MAX_SLOT_PROBES = 16;
+    // Check entire chest/double chest even if its first 16 slots are full.
+    // Cap extremely large modded handlers to protect server tick time.
+    private static final int MAX_SLOT_PROBES = 128;
 
     /** INPUT: machine -> frequency. Returns moved item count, not number of calls. */
     public static int pullFromMachine(IItemHandler source, StoredFrequency frequency, int requested, int startSlot) {

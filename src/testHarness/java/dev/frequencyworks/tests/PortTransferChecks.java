@@ -27,7 +27,37 @@ public final class PortTransferChecks {
         Inventory restricted = new Inventory("gold",31,32);
         assert PortTransferService.pushToMachine(restricted,freq,64,0)==0; // iron first (sorted by amount), blocked
         assert freq.count("iron")==64 && freq.count("gold")==24;
-        System.out.println("PortTransferService tests passed (shared frequency, capacity, no loss in normal handlers).");
+        // Hopper-style first-fit: the first slot receives items until full.
+        // A chest must not round-robin its items just because multiple Port
+        // transfer attempts occur across successive server ticks.
+        StoredFrequency sorted = new StoredFrequency();
+        assert sorted.insert(new ItemStack("cobblestone",64,64))==64;
+        assert sorted.insert(new ItemStack("cobblestone",64,64))==64;
+        assert sorted.insert(new ItemStack("cobblestone",64,64))==64;
+        InventorySlots hopper = new InventorySlots(27,"cobblestone",64);
+        assert PortTransferService.pushToMachine(hopper,sorted,32,0)==32;
+        assert hopper.count(0)==32 && hopper.count(1)==0;
+        assert PortTransferService.pushToMachine(hopper,sorted,32,0)==32;
+        assert hopper.count(0)==64 && hopper.count(1)==0;
+        assert PortTransferService.pushToMachine(hopper,sorted,64,0)==64;
+        assert hopper.count(0)==64 && hopper.count(1)==64;
+        // Slots 0..17 already full: search must reach slot 18.
+        for(int i=2;i<18;i++)hopper.fill(i,64);
+        assert PortTransferService.pushToMachine(hopper,sorted,32,0)==32;
+        assert hopper.count(18)==32 && hopper.count(19)==0;
+
+        // Imports also follow slot order instead of rotating occupied cells.
+        StoredFrequency imported = new StoredFrequency();
+        InventorySlots input = new InventorySlots(27,"iron",64);
+        input.fill(0,10);input.fill(1,30);
+        assert PortTransferService.pullFromMachine(input,imported,5,0)==5;
+        assert input.count(0)==5 && input.count(1)==30;
+        assert PortTransferService.pullFromMachine(input,imported,5,0)==5;
+        assert input.count(0)==0 && input.count(1)==30;
+        assert PortTransferService.pullFromMachine(input,imported,5,0)==5;
+        assert input.count(0)==0 && input.count(1)==25;
+
+        System.out.println("PortTransferService tests passed (shared frequency, capacity, hopper first-fit slot order, no loss).");
     }
     static final class Inventory implements IItemHandler {
         final String type;
@@ -45,6 +75,28 @@ public final class PortTransferChecks {
             int moved=Math.min(stack.getCount(),maxSlot-quantity);
             if (!sim) quantity+=moved;
             return stack.copyWithCount(stack.getCount()-moved);
+        }
+    }
+    static final class InventorySlots implements IItemHandler {
+        final int[] quantities;
+        final String id;
+        final int limit;
+        InventorySlots(int slots,String id,int limit){
+            this.quantities=new int[slots];this.id=id;this.limit=limit;
+        }
+        int count(int slot){return quantities[slot];}
+        void fill(int slot,int value){quantities[slot]=value;}
+        @Override public int getSlots(){return quantities.length;}
+        @Override public ItemStack extractItem(int slot,int amount,boolean simulate){
+            int taken=Math.min(Math.max(0,amount),quantities[slot]);
+            if(!simulate)quantities[slot]-=taken;
+            return new ItemStack(id,taken,limit);
+        }
+        @Override public ItemStack insertItem(int slot,ItemStack stack,boolean simulate){
+            if(!id.equals(stack.id()))return stack.copy();
+            int accepted=Math.min(stack.getCount(),Math.max(0,limit-quantities[slot]));
+            if(!simulate)quantities[slot]+=accepted;
+            return stack.copyWithCount(stack.getCount()-accepted);
         }
     }
 }

@@ -32,8 +32,7 @@ public final class TransferPortBlockEntity extends BlockEntity {
     private final PortFilterBank outputFilter = new PortFilterBank();
     private final PortRates.ItemBudget itemBudget = new PortRates.ItemBudget();
     private final PortRates.StackBudget stackBudget = new PortRates.StackBudget();
-    private final int[] slotCursors = new int[6];
-    private int faceCursor;
+    private int faceCursor; // face fairness only; each inventory uses hopper-style slot order
     private long retryAt;
     private BlockCapabilityCache<IItemHandler, Direction>[] caches;
 
@@ -150,7 +149,7 @@ public final class TransferPortBlockEntity extends BlockEntity {
             int transfer = 0;
             if (mode == FaceMode.INPUT || mode == FaceMode.BOTH) {
                 transfer = PortTransferService.pullFromMachine(handler, network, maxCount,
-                        port.slotCursors[dir], port.inputFilter);
+                        0, port.inputFilter);
             }
             if (transfer == 0 && (mode == FaceMode.OUTPUT || mode == FaceMode.BOTH)) {
                 // BOTH must not export an item the same face would immediately
@@ -160,9 +159,8 @@ public final class TransferPortBlockEntity extends BlockEntity {
                         ? item -> port.outputFilter.test(item) && !port.inputFilter.test(item)
                         : port.outputFilter;
                 transfer = PortTransferService.pushToMachine(handler, network, maxCount,
-                        port.slotCursors[dir], allowed);
+                        0, allowed);
             }
-            port.slotCursors[dir]++; // no systematic preference for slot zero
             if (transfer > 0) {
                 moved = true;
                 data.changed();
