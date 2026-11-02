@@ -105,7 +105,7 @@ public final class SequencerNetworking {
                 case "direction" -> next=SequencerProgram.withReceive(s,!s.receive());
                 case "amount" -> next=SequencerProgram.withAmount(s,Math.max(1,Math.min(4096,s.amount()+req.value())));
                 case "blacklist" -> next=SequencerProgram.withBlacklist(s,!s.blacklist());
-                case "gate" -> next=SequencerProgram.withGate(s,(s.gate()+1)%4);
+                case "gate" -> next=SequencerProgram.withGate(s,(s.gate()+1)%19);
                 default -> {return;}
             }
             SequencerProgram.setStep(held,slot,next,player.registryAccess());

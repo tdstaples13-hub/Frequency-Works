@@ -75,7 +75,9 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         add(167,124,37,"+16",()->send("amount",16),"Increase requested item count");
         if("redstone".equals(current().getString("Card"))) {
             String[] gates={"Powered","Unpowered","Rising edge","Falling edge"};
-            add(8,147,196,"Redstone: "+gates[Math.floorMod(current().getInt("Gate"),4)],
+            int mode=Math.floorMod(current().getInt("Gate"),19);
+            String title=mode<4?gates[mode]:"Signal at least "+(mode-3);
+            add(8,147,196,"Redstone: "+title,
                     ()->send("gate",0),"Gate checks signal on the linked target face");
         } else {
             add(8,147,196,"Clear selected step",()->send("clear",0),

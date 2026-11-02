@@ -42,6 +42,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     private boolean edgeInitialized, rising, falling;
     private int lastPower;
     private String status="Ready";
+    private Boolean hasProgramCache;
 
     public SequencerBlockEntity(BlockPos pos,BlockState state) {
         super(ModContent.SEQUENCER_ENTITY.get(),pos,state);
@@ -59,14 +60,19 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     public ItemStack getItem(int i){return i>=0&&i<9?tablets.get(i):ItemStack.EMPTY;}
     public ItemStack removeItem(int i,int count){
         ItemStack taken=ContainerHelper.removeItem(tablets,i,count);
-        if(!taken.isEmpty())setChanged();
+        if(!taken.isEmpty()){hasProgramCache=null;setChanged();}
         return taken;
     }
-    public ItemStack removeItemNoUpdate(int i){return ContainerHelper.takeItem(tablets,i);}
+    public ItemStack removeItemNoUpdate(int i){
+        ItemStack taken=ContainerHelper.takeItem(tablets,i);
+        if(!taken.isEmpty()){hasProgramCache=null;setChanged();}
+        return taken;
+    }
     public void setItem(int i,ItemStack item){
         if(i<0||i>=9) return;
         if(!item.isEmpty() && !(item.getItem() instanceof SequenceTabletItem))return;
         tablets.set(i,item.isEmpty()?ItemStack.EMPTY:item.copyWithCount(1));
+        hasProgramCache=null;
         if(tabletIndex==i){remaining=0;locked=ItemStack.EMPTY;edgeInitialized=false;}
         setChanged();
     }
@@ -77,7 +83,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     }
     public void clearContent(){
         for(int i=0;i<9;i++)tablets.set(i,ItemStack.EMPTY);
-        reset();setChanged();
+        reset();hasProgramCache=null;setChanged();
     }
     private void reset(){tabletIndex=0;stepIndex=0;remaining=0;locked=ItemStack.EMPTY;edgeInitialized=false;rising=false;falling=false;}
     public List<ItemStack> takeRecovery(){
@@ -117,6 +123,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
                 if(!s.isEmpty())recovery.add(s);
             }
         }
+        hasProgramCache=null;
         edgeInitialized=tag.getBoolean("EdgeInitialized");lastPower=tag.getInt("LastPower");
         rising=tag.getBoolean("Rising");falling=tag.getBoolean("Falling");
     }
@@ -153,6 +160,16 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             && server.hasChunkAt(link.pos());
     }
 
+    private boolean hasProgram(ServerLevel server){
+        if(hasProgramCache!=null)return hasProgramCache;
+        for(ItemStack tablet:tablets)if(!tablet.isEmpty()){
+            for(int i=0;i<9;i++)if(SequencerProgram.step(tablet,i,server.registryAccess()).configured()){
+                hasProgramCache=true;return true;
+            }
+        }
+        hasProgramCache=false;return false;
+    }
+
     private void process(ServerLevel server){
         // Refunds from a non-transactional third-party handler take priority and
         // remain persisted until the Host can accept them.
@@ -168,6 +185,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             setChanged();
             if(!recovery.isEmpty()){status="Refund blocked";return;}
         }
+        if(!hasProgram(server)){status="No instructions";return;}
         int attempts=0,scanned=0;
         while(attempts<9 && scanned<81){
             scanned++;
@@ -195,7 +213,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
                     case 1->lastPower==0;
                     case 2->rising;
                     case 3->falling;
-                    default->lastPower>0;
+                    default->step.gate()>=4 ? lastPower>=step.gate()-3 : lastPower>0;
                 };
                 if(!edgeInitialized) {status="Reading redstone";return;}
                 if(!pass){status="Waiting for signal";return;}

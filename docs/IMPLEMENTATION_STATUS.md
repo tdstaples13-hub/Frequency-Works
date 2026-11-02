@@ -20,3 +20,6 @@
 ## Next
 
 Run the Java 21 NeoForge GitHub Action, fix any compiler errors, then test in a disposable ATM10 world. Do not promote this dev branch to main until gameplay is verified.
+
+- Placed Transfer Buffers now expose a standard NeoForge item handler for automation, including Sequencer Host usage.
+- Sequencers cache idle programs and Redstone Card supports configured thresholds 1–15.
