@@ -77,6 +77,14 @@ public final class CoreChecks {
             assert iTotal == (long)60 * PortRates.TIERS[tier].singleItemsPerTickNumerator()/PortRates.TIERS[tier].singleItemsPerTickDenominator();
             assert sTotal == (long)60 * PortRates.TIERS[tier].stackOpsNumerator()/PortRates.TIERS[tier].stackOpsDenominator();
         }
+        // Sequencer backoff: one-second checks for a minute, then 100 seconds.
+        long firstFailure=10_000L;
+        assert SequencerRetrySchedule.nextAttempt(firstFailure,firstFailure)==firstFailure+20;
+        assert SequencerRetrySchedule.nextAttempt(firstFailure,firstFailure+1_199)==firstFailure+1_219;
+        assert SequencerRetrySchedule.nextAttempt(firstFailure,firstFailure+1_200)==firstFailure+3_200;
+        assert SequencerRetrySchedule.nextAttempt(firstFailure,firstFailure+3_200)==firstFailure+5_200;
+        // Any successful move resets firstFailure to the next blockage tick.
+        assert SequencerRetrySchedule.nextAttempt(firstFailure+3_201,firstFailure+3_201)==firstFailure+3_221;
         assert registry.visibleTo(bob).isEmpty();
         assert registry.visibleTo(alice).contains(alice042);
         System.out.println("All Frequency Works core checks passed.");

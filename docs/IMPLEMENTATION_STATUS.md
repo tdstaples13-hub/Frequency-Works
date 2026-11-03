@@ -31,3 +31,7 @@ Run the Java 21 NeoForge GitHub Action, fix any compiler errors, then test in a 
 - Alpha A6D: remove the always-visible resume arrow and extra gray right sidebar from the nine-Tablet Sequencer inventory. Standard panel is 176 pixels wide. To resume a genuinely stopped Sequencer, sneak-right-click its block with an empty hand; regular right-click still opens the inventory. No permanent UI control is shown.
 
 - Alpha A6E: Interaction Card top-row button cycles Right-click / Sneak-right-click / Punch / Mine; the bottom control selects the target face independently of item import/export direction. Server-side fake-player block actions are implemented with permission checks and a 10-tick cooldown; in-game behavior has not been verified.
+
+- Alpha A6F: persistent 20-tick retry checks for the first 1,200 ticks of a blockage, then 2,000-tick retries until progress. Current step/remaining quantity preserved, Redstone signals continuously sampled; hard invalid-program failures continue respecting Skip/Stop policies.
+- Alpha A6F: in-panel Reset button, protected by a server-validated second-click confirmation during partial item transfers. Shows Running/Waiting/Stopped plus Tablet/Step/remaining; no side panel.
+- Alpha A6F: Redstone Card top-row setting cycles powered/unpowered/edges/threshold 1–15; lower-row control cycles selected linked face (not whitelist/blacklist). The action mode is still stored in the per-step Gate field.

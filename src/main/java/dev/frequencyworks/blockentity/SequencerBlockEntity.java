@@ -46,6 +46,45 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     private long nextInteractionAt;
     private String status="Ready";
     private Boolean hasProgramCache;
+    // World-game-time scheduling survives unloads/restarts. A successful
+    // transfer or completed instruction starts a fresh fast retry window.
+    private boolean waiting, redstoneWait;
+    private long firstWaitTick=-1L, retryAtTick;
+    // The only expensive operations happen on schedule, not every tick.
+    public boolean hasPartialTransfer(){return remaining>0 && !locked.isEmpty();}
+    public boolean waiting(){return waiting;}
+    public long retryAtTick(){return retryAtTick;}
+    public boolean resetProgram(){
+        // Caller must confirm partial progress before invoking this method.
+        boolean partial=hasPartialTransfer();
+        reset();
+        stopped=false; waiting=false;redstoneWait=false;
+        firstWaitTick=-1L;retryAtTick=0;
+        status="Running";
+        // The already-committed 10-tick fake-player cooldown is not bypassed.
+        setChanged();
+        return partial;
+    }
+    private void clearWait(){
+        if(!waiting && firstWaitTick<0)return;
+        waiting=false;redstoneWait=false;firstWaitTick=-1;retryAtTick=0;
+        setChanged();
+    }
+    private void waitForRetry(ServerLevel server,String why){
+        long now=server.getGameTime();
+        if(firstWaitTick<0 || redstoneWait)firstWaitTick=now;
+        waiting=true;redstoneWait=false;
+        retryAtTick=dev.frequencyworks.core.SequencerRetrySchedule.nextAttempt(firstWaitTick,now);
+        status=why;
+        setChanged();
+    }
+    private void waitForRedstone(String why){
+        // Unlike item interactions, redstone gates remain actively evaluated.
+        if(!waiting || !redstoneWait){
+            firstWaitTick=-1;retryAtTick=0;setChanged();
+        }
+        waiting=true;redstoneWait=true;status=why;
+    }
 
     public SequencerBlockEntity(BlockPos pos,BlockState state) {
         super(ModContent.SEQUENCER_ENTITY.get(),pos,state);
@@ -55,8 +94,8 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     public int remaining(){return remaining;}
     public boolean stopped(){return stopped;}
     public String status(){return status;}
-    public void resume(){stopped=false;status="Running";setChanged();}
-    public void halt(){stopped=true;status="Stopped";setChanged();}
+    public void resume(){stopped=false;clearWait();status="Running";setChanged();}
+    public void halt(){stopped=true;waiting=false;redstoneWait=false;status="Stopped";setChanged();}
 
     public int getContainerSize(){return tablets.size();}
     public boolean isEmpty(){for(ItemStack s:tablets)if(!s.isEmpty())return false;return true;}
@@ -76,7 +115,10 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
         if(!item.isEmpty() && !(item.getItem() instanceof SequenceTabletItem))return;
         tablets.set(i,item.isEmpty()?ItemStack.EMPTY:item.copyWithCount(1));
         hasProgramCache=null;
-        if(tabletIndex==i){remaining=0;locked=ItemStack.EMPTY;edgeInitialized=false;}
+        if(tabletIndex==i){
+            remaining=0;locked=ItemStack.EMPTY;edgeInitialized=false;
+            clearWait();
+        }
         setChanged();
     }
     public boolean canPlaceItem(int i,ItemStack item){return i>=0&&i<9&&item.getItem() instanceof SequenceTabletItem;}
@@ -86,7 +128,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     }
     public void clearContent(){
         for(int i=0;i<9;i++)tablets.set(i,ItemStack.EMPTY);
-        reset();hasProgramCache=null;setChanged();
+        reset();clearWait();hasProgramCache=null;setChanged();
     }
     private void reset(){tabletIndex=0;stepIndex=0;remaining=0;locked=ItemStack.EMPTY;edgeInitialized=false;rising=false;falling=false;}
     public List<ItemStack> takeRecovery(){
@@ -106,6 +148,10 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
         tag.putInt("LastPower",lastPower);
         tag.putBoolean("Rising",rising);tag.putBoolean("Falling",falling);
         tag.putLong("NextInteractionAt",nextInteractionAt);
+        tag.putBoolean("Waiting",waiting);
+        tag.putBoolean("RedstoneWait",redstoneWait);
+        tag.putLong("FirstWaitTick",firstWaitTick);
+        tag.putLong("RetryAtTick",retryAtTick);
     }
     @Override protected void loadAdditional(CompoundTag tag,HolderLookup.Provider registries){
         super.loadAdditional(tag,registries);
@@ -131,17 +177,29 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
         edgeInitialized=tag.getBoolean("EdgeInitialized");lastPower=tag.getInt("LastPower");
         rising=tag.getBoolean("Rising");falling=tag.getBoolean("Falling");
         nextInteractionAt=tag.getLong("NextInteractionAt");
+        waiting=tag.getBoolean("Waiting");
+        redstoneWait=tag.getBoolean("RedstoneWait");
+        firstWaitTick=tag.contains("FirstWaitTick")?tag.getLong("FirstWaitTick"):-1L;
+        retryAtTick=tag.getLong("RetryAtTick");
+        if(stopped){waiting=false;redstoneWait=false;}
     }
 
-    /** Client packets need only these three runtime counters, not inventory data. */
+    /** Lightweight server-to-client runtime status, not an inventory mirror. */
     public int runtime(int index){
-        return switch(index){case 0->tabletIndex;case 1->stepIndex;case 2->remaining;case 3->stopped?1:0;default->0;};
+        return switch(index){
+            case 0->tabletIndex;case 1->stepIndex;
+            case 2->remaining;case 3->stopped?1:0;
+            case 4->waiting?1:0;case 5->hasPartialTransfer()?1:0;
+            default->0;
+        };
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, SequencerBlockEntity seq){
         if(!(level instanceof ServerLevel server))return;
         seq.sampleEdges(server);
-        if(server.getGameTime()%2==0 && !seq.stopped)seq.process(server);
+        if(server.getGameTime()%2==0 && !seq.stopped
+                && (!seq.waiting || seq.redstoneWait || server.getGameTime()>=seq.retryAtTick))
+            seq.process(server);
     }
     private void sampleEdges(ServerLevel server){
         ItemStack tablet=tablets.get(tabletIndex);
@@ -157,6 +215,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             if(lastPower==0 && signal>0)rising=true;
             if(lastPower>0 && signal==0)falling=true;
         }
+        if(!edgeInitialized || signal!=lastPower || rising || falling)setChanged();
         edgeInitialized=true;lastPower=signal;
     }
     private boolean targetValid(ServerLevel server,Link link){
@@ -190,7 +249,9 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             setChanged();
             if(!recovery.isEmpty()){status="Refund blocked";return;}
         }
-        if(!hasProgram(server)){status="No instructions";return;}
+        if(!hasProgram(server)){
+            clearWait();status="No instructions";return;
+        }
         int attempts=0,scanned=0;
         while(attempts<9 && scanned<81){
             scanned++;
@@ -209,9 +270,8 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             }
             Link link=links.get(step.link());
             if(!targetValid(server,link)){
-                // Unloaded chunks and other dimensions are normal waits, never
-                // force-loaded and never interpreted as a permanent item failure.
-                status="Target unavailable";return;
+                // Preserve links across unloads. Never force-load a target.
+                waitForRetry(server,"Target unavailable");return;
             }
             if(step.redstone()){
                 boolean pass=switch(step.gate()){
@@ -220,20 +280,21 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
                     case 3->falling;
                     default->step.gate()>=4 ? lastPower>=step.gate()-3 : lastPower>0;
                 };
-                if(!edgeInitialized) {status="Reading redstone";return;}
-                if(!pass){status="Waiting for signal";return;}
+                if(!edgeInitialized) {waitForRedstone("Reading redstone");return;}
+                if(!pass){waitForRedstone("Waiting for signal");return;}
                 advance();continue;
             }
             if(step.interaction()){
                 if(server.getGameTime()<nextInteractionAt) {
+                    // Expected safety cooldown is not a failed operation.
                     status="Waiting for interaction cooldown";
                     return;
                 }
                 var result=dev.frequencyworks.sequencer.SequencerInteractionService.perform(
                         server,link,step.gate());
                 if(result!=dev.frequencyworks.sequencer.SequencerInteractionService.Outcome.SUCCESS){
-                    if(!failure(tablet,"Interaction blocked or rejected"))return;
-                    continue;
+                    waitForRetry(server,"Interaction blocked or rejected");
+                    return;
                 }
                 nextInteractionAt=server.getGameTime()+10;
                 status="Interaction executed";
@@ -246,11 +307,20 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             }
             IItemHandler host=server.getCapability(Capabilities.ItemHandler.BLOCK,worldPosition.below(),Direction.UP);
             IItemHandler target=server.getCapability(Capabilities.ItemHandler.BLOCK,link.pos(),link.face());
-            if(host==null || target==null){status="Waiting for inventory";return;}
+            if(host==null || target==null){
+                waitForRetry(server,"Waiting for inventory");
+                return;
+            }
             IItemHandler from=step.receive()?target:host;
             IItemHandler to=step.receive()?host:target;
             Move move=moveOne(from,to,step,Math.min(64,remaining),server);
-            if(move.count()<=0){status="Waiting for items/space";return;}
+            if(move.count()<=0){
+                waitForRetry(server,"Waiting for items/space");
+                return;
+            }
+            // Any progress restores the fast retry window; a later blockage
+            // starts counting its own first minute from that point.
+            clearWait();
             if(locked.isEmpty())locked=move.prototype().copyWithCount(1);
             remaining-=move.count();
             status="Moving items";
@@ -264,10 +334,12 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
         if(policy==1 && remaining==SequencerProgram.step(tablet,stepIndex,level.registryAccess()).amount()){
             advance();return true;
         }
-        if(policy==2){halt();}
+        if(policy==2){halt();return false;}
+        if(level instanceof ServerLevel server)waitForRetry(server,why);
         return false;
     }
     private void advance(){
+        clearWait();
         remaining=0;locked=ItemStack.EMPTY;
         edgeInitialized=false;rising=false;falling=false;lastPower=0;
         stepIndex++;

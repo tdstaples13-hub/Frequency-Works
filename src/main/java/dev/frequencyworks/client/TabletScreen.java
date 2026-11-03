@@ -63,12 +63,22 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
     private static boolean interaction(CompoundTag step){
         return "interaction".equals(step.getString("Card"));
     }
+    private static boolean redstone(CompoundTag step){
+        return "redstone".equals(step.getString("Card"));
+    }
     private static String interactionAction(CompoundTag step){
         return switch(Math.floorMod(step.getInt("Gate"),4)){
             case 0->"Right-click";
             case 1->"Sneak-right-click";
             case 2->"Punch";
             default->"Mine";
+        };
+    }
+    private static String gateSymbol(int raw){
+        int mode=Math.floorMod(raw,19);
+        return switch(mode){
+            case 0->"P";case 1->"U";case 2->"^";case 3->"v";
+            default->Integer.toString(mode-3);
         };
     }
     private static String actionSymbol(CompoundTag step){
@@ -126,17 +136,10 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         int failure=Math.floorMod(menu.state().getInt("OnFailure"),3);
         String[] modes={"Continue","Skip","Stop"};
         CompoundTag current=step(selected);
-        boolean redstone="redstone".equals(current.getString("Card"));
-        int width=redstone?81:160;
-        footer(8,width,"Failure: "+modes[failure],
+        footer(8,160,"Failure: "+modes[failure],
                 "On failure: Continue retries, Skip only before partial transfers, Stop requires manual restart",
                 ()->send("failure",selected,0));
-        if(redstone){
-            int gate=Math.floorMod(current.getInt("Gate"),19);
-            footer(92,76,"RS: "+(gate>=4?">="+(gate-3):gateLabel(gate)),
-                    "Step "+(selected+1)+" Redstone gate: "+gateLabel(gate)+" (click to cycle)",
-                    ()->send("gate",selected,0));
-        }
+
     }
 
     /** The A5G bug was an undrawn panel. Always paint it before the normal
@@ -226,12 +229,13 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
             CompoundTag s=step(i);
             int x=leftPos+FIRST_X+i*SPACING;
             int index=s.contains("Link")?s.getInt("Link"):-1;
-            String icon=interaction(s)?actionSymbol(s):
+            String icon=interaction(s)?actionSymbol(s):redstone(s)?
+                    gateSymbol(s.getInt("Gate")):
                     index>=0 && index<links.size()
                         ?s.getBoolean("Receive")?"<":">":"-";
             g.drawCenteredString(font,icon,x+9,topPos+OPTION_Y+5,0xFF303030);
             drawItem(g,s,x,topPos+GHOST_Y);
-            String lower=interaction(s)?
+            String lower=(interaction(s)||redstone(s))?
                     index>=0 && index<links.size()?
                         net.minecraft.core.Direction.values()[
                             Math.floorMod(links.getCompound(index).getInt("Face"),6)
@@ -274,7 +278,8 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
                     }
                     if(y>=FILTER_Y && y<FILTER_Y+18){
                         selected=column;
-                        if(button==0)send(interaction(step(column))?"interaction_target":"blacklist",column,0);
+                        if(button==0)send((interaction(step(column))||redstone(step(column)))
+                                ?"card_target":"blacklist",column,0);
                         rebuildWidgets();
                         return true;
                     }
@@ -295,11 +300,13 @@ public final class TabletScreen extends AbstractContainerScreen<TabletMenu> {
         if(y>=OPTION_Y && y<OPTION_Y+18){
             description=interaction(s)?
                     "Step "+(col+1)+" action: "+interactionAction(s)+" | click to cycle":
+                    redstone(s)?"Step "+(col+1)+" Redstone: "+
+                        gateLabel(Math.floorMod(s.getInt("Gate"),19))+" | click to cycle":
                     "Step "+(col+1)+": "+faceText(s)+" | click to cycle";
         }else if(y>=GHOST_Y && y<GHOST_Y+18){
             description=ghostTooltip(col,s);
         }else if(y>=FILTER_Y && y<FILTER_Y+18){
-            description=interaction(s)?
+            description=(interaction(s)||redstone(s))?
                     "Step "+(col+1)+": "+interactionTargetText(s):
                     "Step "+(col+1)+": "+(s.getBoolean("Blacklist")?"Blacklist: exclude matching items":"Whitelist: require matching items");
         }else return;

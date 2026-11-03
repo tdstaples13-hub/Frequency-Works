@@ -14,6 +14,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.Component;
 
 /** Standard nine-slot chest menu, with nine programmable Tablet slots only. */
 public final class SequencerMenu extends AbstractContainerMenu {
@@ -21,6 +22,8 @@ public final class SequencerMenu extends AbstractContainerMenu {
     private final BlockPos pos;
     private final SequencerBlockEntity sequencer;
     private final ContainerData counters;
+    /** Server-side double-click confirmation, scoped to this player/menu. */
+    private long resetConfirmUntil;
 
     public SequencerMenu(int id,Inventory inv,RegistryFriendlyByteBuf buf){
         this(id,inv,buf.readBlockPos(),null);
@@ -38,10 +41,10 @@ public final class SequencerMenu extends AbstractContainerMenu {
         for(int row=0;row<3;row++)for(int col=0;col<9;col++)
             addSlot(new Slot(inv,col+row*9+9,8+col*18,49+row*18));
         for(int col=0;col<9;col++)addSlot(new Slot(inv,col,8+col*18,107));
-        counters=be==null?new SimpleContainerData(4):new ContainerData(){
+        counters=be==null?new SimpleContainerData(6):new ContainerData(){
             @Override public int get(int index){return be.runtime(index);}
             @Override public void set(int index,int value){}
-            @Override public int getCount(){return 4;}
+            @Override public int getCount(){return 6;}
         };
         addDataSlots(counters);
     }
@@ -49,6 +52,25 @@ public final class SequencerMenu extends AbstractContainerMenu {
     public int stepIndex(){return counters.get(1);}
     public int remaining(){return counters.get(2);}
     public boolean stopped(){return counters.get(3)!=0;}
+    public boolean waiting(){return counters.get(4)!=0;}
+    public boolean partial(){return counters.get(5)!=0;}
+    @Override public boolean clickMenuButton(Player player,int button){
+        if(button!=0 || sequencer==null || !sequencer.stillValid(player))return false;
+        long now=player.level().getGameTime();
+        if(sequencer.hasPartialTransfer() && now>resetConfirmUntil){
+            resetConfirmUntil=now+100L;
+            player.displayClientMessage(Component.literal(
+                "Reset will repeat items already transferred. Click Reset again within 5 seconds to confirm."
+            ),true);
+            return true;
+        }
+        sequencer.resetProgram();
+        resetConfirmUntil=0;
+        player.displayClientMessage(Component.literal(
+            "Item Sequencer reset to Tablet 1, Step 1."
+        ),true);
+        return true;
+    }
     @Override public boolean stillValid(Player player){
         return sequencer==null || sequencer.stillValid(player);
     }

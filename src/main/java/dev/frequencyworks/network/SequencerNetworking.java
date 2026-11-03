@@ -98,7 +98,12 @@ public final class SequencerNetworking {
                 case "clear" -> next=SequencerProgram.clearItem(s);
                 case "option" -> next=s.interaction()
                         ?SequencerProgram.nextInteractionAction(s)
+                        :s.redstone()?SequencerProgram.withGate(s,(s.gate()+1)%19)
                         :SequencerProgram.nextFaceOption(held,s);
+                case "card_target" -> {
+                    if(!s.interaction() && !s.redstone())return;
+                    next=SequencerProgram.nextInteractionTarget(held,s);
+                }
                 case "interaction_target" -> {
                     if(!s.interaction())return;
                     next=SequencerProgram.nextInteractionTarget(held,s);
