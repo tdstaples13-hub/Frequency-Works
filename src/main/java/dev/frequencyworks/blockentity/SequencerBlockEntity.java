@@ -51,7 +51,7 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
     private boolean waiting, redstoneWait;
     private long firstWaitTick=-1L, retryAtTick;
     // The only expensive operations happen on schedule, not every tick.
-    public boolean hasPartialTransfer(){return remaining>0 && !locked.isEmpty();}
+    public boolean hasPartialTransfer(){return (remaining>0 && !locked.isEmpty()) || !recovery.isEmpty();}
     public boolean waiting(){return waiting;}
     public long retryAtTick(){return retryAtTick;}
     public boolean resetProgram(){
@@ -215,7 +215,9 @@ public final class SequencerBlockEntity extends BlockEntity implements Container
             if(lastPower==0 && signal>0)rising=true;
             if(lastPower>0 && signal==0)falling=true;
         }
-        if(!edgeInitialized || signal!=lastPower || rising || falling)setChanged();
+        // A latched edge remains in memory until its gate advances; don't
+        // dirty the chunk on every tick merely because the edge was latched.
+        if(!edgeInitialized || signal!=lastPower)setChanged();
         edgeInitialized=true;lastPower=signal;
     }
     private boolean targetValid(ServerLevel server,Link link){

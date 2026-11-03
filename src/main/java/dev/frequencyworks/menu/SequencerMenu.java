@@ -57,7 +57,7 @@ public final class SequencerMenu extends AbstractContainerMenu {
     @Override public boolean clickMenuButton(Player player,int button){
         if(button!=0 || sequencer==null || !sequencer.stillValid(player))return false;
         long now=player.level().getGameTime();
-        if(sequencer.hasPartialTransfer() && now>resetConfirmUntil){
+        if(sequencer.hasPartialTransfer() && now>=resetConfirmUntil){
             resetConfirmUntil=now+100L;
             player.displayClientMessage(Component.literal(
                 "Reset will repeat items already transferred. Click Reset again within 5 seconds to confirm."
